@@ -9,6 +9,7 @@ from telegram.ext import (
 from decouple import config
 import psycopg2
 import datetime
+import requests  # Add this line to import the requests library
 
 TOKEN = config("token")
 
@@ -17,8 +18,6 @@ BUY_PREMIUM_TEXT = "🛍️ خرید پرمیوم تلگرام"
 BUY_FOR_SELF_TEXT = "🙋‍♂️ خرید برای خودم"
 BUY_FOR_FRIENDS_TEXT = "🙋‍♂️🙋‍♂️🙋‍♂️ خرید برای دوستان"
 BUY_SUCCESS = "✅ خرید با موفقیت انجام شد"
-ONE_MONTH_SUB = "خرید اشتراک یک ماهه 300 ت"
-THREE_MONTH_SUB = "خرید اشتراک 3 ماهه 900 ت"
 LOREM = "لورم ایپسوم متن ساختگی با تولید سادگی نامفهوم از صنعت چاپ، و با استفاده از طراحان گرافیک است، چاپگرها و متون بلکه روزنامه و مجله در ستون و سطرآنچنان که لازم است، و برای شرایط فعلی تکنولوژی مورد نیاز، و کاربردهای متنوع با هدف بهبود ابزارهای کاربردی می باشد، کتابهای زیادی در شصت و سه درصد گذشته حال و آینده، شناخت فراوان جامعه و متخصصان را می طلبد، تا با نرم افزارها شناخت بیشتری را برای طراحان رایانه ای علی الخصوص طراحان خلاقی، و فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری موجود در ارائه راهکارها، و شرایط سخت تایپ به پایان رسد و زمان مورد نیاز شامل حروفچینی دستاوردهای اصلی، و جوابگوی سوالات پیوسته اهل دنیای موجود طراحی اساسا مورد استفاده قرار گیرد."
 FAQ_TEXT = "❓ سوالات پر تکرار"
 MY_PURCHASES_TEXT = "❇️ درخواست های من"
@@ -105,12 +104,19 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, buy_sub)
 
+    # Fetch the latest price from the API
+    response = requests.get("https://api.wallex.ir/v1/markets")
+    data = response.json()
+
+    # Extract the USDTTMN symbol data
+    usdt_tmn = data["result"]["symbols"]["USDTTMN"]
+    last_price = usdt_tmn["stats"]["lastPrice"]
+
+    buy_self_text = f"قیمت فعلی تتر به تومان: {last_price} تومان"
+
     buy_self_keys = [
         [
-            KeyboardButton(text=ONE_MONTH_SUB),
-        ],
-        [
-            KeyboardButton(text=THREE_MONTH_SUB),
+            KeyboardButton(text=buy_self_text),
         ],
         [
             KeyboardButton(text=GO_BACK_TEXT),
@@ -129,10 +135,9 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = update.message.from_user
     user_id = user_data["id"]
     user_username = user_data["username"]
-    if text == ONE_MONTH_SUB:
-        user_sub = "1 MONTH"
-    elif text == THREE_MONTH_SUB:
-        user_sub = "3 MONTHS"
+    user_sub = (
+        text  # Assuming the text contains the subscription type selected by the user
+    )
 
     if user_username:
         cur.execute(
@@ -209,9 +214,7 @@ def main():
         filters.TEXT & filters.Regex(f"^{BUY_FOR_SELF_TEXT}$"), buy_for_self
     )
     buy_success_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^{ONE_MONTH_SUB}$")
-        | filters.Regex(f"^{THREE_MONTH_SUB}$"),
-        buy_success,
+        filters.TEXT & filters.Regex(f"^{BUY_FOR_SELF_TEXT}.*"), buy_success
     )
     faq_handler = MessageHandler(
         filters.TEXT & filters.Regex(f"^{FAQ_TEXT}$"),
