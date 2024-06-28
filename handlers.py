@@ -13,6 +13,8 @@ from texts import (
     FAQ_TEXT,
     MY_PURCHASES_TEXT,
     GO_BACK_TEXT,
+    ONE_M_SUB_TEXT,
+    THREE_M_SUB_TEXT,
 )
 from config import ADMIN_CHAT_ID
 
@@ -73,19 +75,36 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, buy_sub)
+    user_data = update.message.from_user
 
-    # buy_self_keys = [
-    #     [
-    #         KeyboardButton(text=buy_self_text),
-    #     ],
-    #     [
-    #         KeyboardButton(text=GO_BACK_TEXT),
-    #     ],
-    # ]
-    # markup = ReplyKeyboardMarkup(buy_self_keys, resize_keyboard=True)
+    invoice_title = ONE_M_SUB_TEXT
+    invoice_description = f"@{user_data['username']} اشتراک یک ماهه برای نام کاربری"
+    invoice_price = buy_self_text  # Replace with your price
+
+    # Format the invoice text in a clear and concise way
+    invoice_text = f"""**Invoice**
+
+Title: {invoice_title}
+Description: {invoice_description}
+Price: {invoice_price} ت
+
+**Please note:** This is a text-based representation of the invoice. 
+For official documentation, please refer to your payment processor's website.
+
+Would you like to proceed with the purchase?"""
+
+    buy_self_keys = [
+        # [
+        #     KeyboardButton(text=buy_self_text),
+        # ],
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
+        ],
+    ]
+    markup = ReplyKeyboardMarkup(buy_self_keys, resize_keyboard=True)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="انتخاب کنید :"
+        chat_id=update.effective_chat.id, text=invoice_text, reply_markup=markup
     )
 
 
