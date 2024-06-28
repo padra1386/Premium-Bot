@@ -4,15 +4,17 @@ from database import get_db_connection
 from utils import push_menu
 import requests
 from currencyapi import buy_self_text
-
-BUY_PREMIUM_TEXT = "🛍️ خرید پرمیوم تلگرام"
-BUY_FOR_SELF_TEXT = "🙋‍♂️ خرید برای خودم"
-BUY_FOR_FRIENDS_TEXT = "🙋‍♂️🙋‍♂️🙋‍♂️ خرید برای دوستان"
-BUY_SUCCESS = "✅ خرید با موفقیت انجام شد"
-LOREM = "لورم ایپسوم متن ساختگی با تولید سادگی نامفهوم از صنعت چاپ، و با استفاده از طراحان گرافیک است، چاپگرها و متون بلکه روزنامه و مجله در ستون و سطرآنچنان که لازم است، و برای شرایط فعلی تکنولوژی مورد نیاز، و کاربردهای متنوع با هدف بهبود ابزارهای کاربردی می باشد، کتابهای زیادی در شصت و سه درصد گذشته حال و آینده، شناخت فراوان جامعه و متخصصان را می طلبد، تا با نرم افزارها شناخت بیشتری را برای طراحان رایانه ای علی الخصوص طراحان خلاقی، و فرهنگ پیشرو در زبان فارسی ایجاد کرد، در این صورت می توان امید داشت که تمام و دشواری موجود در ارائه راهکارها، و شرایط سخت تایپ به پایان رسد و زمان مورد نیاز شامل حروفچینی دستاوردهای اصلی، و جوابگوی سوالات پیوسته اهل دنیای موجود طراحی اساسا مورد استفاده قرار گیرد."
-FAQ_TEXT = "❓ سوالات پر تکرار"
-MY_PURCHASES_TEXT = "❇️ درخواست های من"
-GO_BACK_TEXT = "🔙 بازگشت"
+from texts import (
+    BUY_PREMIUM_TEXT,
+    BUY_FOR_SELF_TEXT,
+    BUY_FOR_FRIENDS_TEXT,
+    BUY_SUCCESS_TEXT,
+    LOREM,
+    FAQ_TEXT,
+    MY_PURCHASES_TEXT,
+    GO_BACK_TEXT,
+)
+from config import ADMIN_CHAT_ID
 
 
 def push_menu(context: ContextTypes.DEFAULT_TYPE, menu_function):
@@ -31,6 +33,7 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, start)
+
     start_keys = [
         [
             KeyboardButton(text=BUY_PREMIUM_TEXT),
@@ -43,7 +46,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="This is a test", reply_markup=markup
+        chat_id=update.effective_chat.id, text="خوش آمدید", reply_markup=markup
     )
 
 
@@ -71,48 +74,66 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, buy_sub)
 
-    buy_self_keys = [
-        [
-            KeyboardButton(text=buy_self_text),
-        ],
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ],
-    ]
-    markup = ReplyKeyboardMarkup(buy_self_keys, resize_keyboard=True)
+    # buy_self_keys = [
+    #     [
+    #         KeyboardButton(text=buy_self_text),
+    #     ],
+    #     [
+    #         KeyboardButton(text=GO_BACK_TEXT),
+    #     ],
+    # ]
+    # markup = ReplyKeyboardMarkup(buy_self_keys, resize_keyboard=True)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="انتخاب کنید :", reply_markup=markup
+        chat_id=update.effective_chat.id, text="انتخاب کنید :"
     )
 
 
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
+    photo = update.message.photo
 
-    user_data = update.message.from_user
-    user_id = user_data["id"]
-    user_username = user_data["username"]
-    user_sub = text
+    if photo:
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+        # Handle photo message
+        admin_chat_id = ADMIN_CHAT_ID  # Replace with the actual chat ID obtained
 
-    if user_username:
-        cur.execute(
-            "INSERT INTO users (id, username, sub) VALUES (%s, %s, %s)",
-            (user_id, user_username, user_sub),
-        )
-        conn.commit()
-    else:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="لطفا برای حساب خود یوزرنیم انتخاب کنید",
-        )
+        try:
+            user_data = update.message.from_user
+            user_id = user_data["id"]
+            user_username = user_data["username"]
+            user_sub = text
 
-    cur.close()
-    conn.close()
+            conn = get_db_connection()
+            cur = conn.cursor()
 
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=BUY_SUCCESS)
+            if user_username:
+                cur.execute(
+                    "INSERT INTO users (id, username, sub) VALUES (%s, %s, %s)",
+                    (user_id, user_username, user_sub),
+                )
+                conn.commit()
+            else:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="لطفا برای حساب خود یوزرنیم انتخاب کنید",
+                )
+
+            cur.close()
+            conn.close()
+
+            # Get the file ID of the largest photo (usually the last one in the list)
+            file_id = photo[-1].file_id
+
+            # Send the photo to the admin
+            await context.bot.send_photo(chat_id=admin_chat_id, photo=file_id)
+
+        except Exception as e:
+            print(f"Error sending photo to admin: {e}")
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="An error occurred while sending the photo to the admin.",
+            )
 
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -7,7 +7,15 @@ from telegram.ext import (
     ContextTypes,
 )
 from config import TOKEN
-from handlers import start, buy_sub, buy_for_self, buy_success, faq, my_subs, go_back
+from handlers import (
+    start,
+    buy_sub,
+    buy_for_self,
+    buy_success,
+    faq,
+    my_subs,
+    go_back,
+)
 from currencyapi import buy_self_text
 
 
@@ -22,8 +30,7 @@ def main():
         filters.TEXT & filters.Regex(f"^🙋‍♂️ خرید برای خودم$"), buy_for_self
     )
     buy_success_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^خرید اشتراک یک ماهه 300 ت$")
-        | filters.Regex(f"^{buy_self_text}$"),
+        filters.PHOTO,
         buy_success,
     )
     faq_handler = MessageHandler(
