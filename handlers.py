@@ -137,7 +137,7 @@ Price: {invoice_price} ت
 **Please note:** This is a text-based representation of the invoice. 
 For official documentation, please refer to your payment processor's website.
 
-Would you like to proceed with the purchase?"""
+یه عکس بفرست !!!!!!!!!!!!"""
 
     buy_self_keys = [
         # [
