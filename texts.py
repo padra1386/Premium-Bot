@@ -6,5 +6,6 @@ LOREM = "لورم ایپسوم متن ساختگی با تولید سادگی ن
 FAQ_TEXT = "❓ سوالات پر تکرار"
 MY_PURCHASES_TEXT = "❇️ درخواست های من"
 GO_BACK_TEXT = "🔙 بازگشت"
-ONE_M_SUB_TEXT = "تلگرام پرمیوم یک ماهه"
 THREE_M_SUB_TEXT = "تلگرام پرمیوم سه ماهه"
+SIX_M_SUB_TEXT = "تلگرام پرمیوم شش ماهه"
+TWELVE_M_SUB_TEXT = "تلگرام پرمیوم دوازده ماهه"

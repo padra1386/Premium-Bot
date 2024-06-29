@@ -3,7 +3,7 @@ from telegram.ext import ContextTypes
 from database import get_db_connection
 from utils import push_menu
 import requests
-from currencyapi import buy_self_text
+from currencyapi import three_month_price, six_month_price, twelve_month_price
 from texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,
@@ -13,8 +13,9 @@ from texts import (
     FAQ_TEXT,
     MY_PURCHASES_TEXT,
     GO_BACK_TEXT,
-    ONE_M_SUB_TEXT,
     THREE_M_SUB_TEXT,
+    SIX_M_SUB_TEXT,
+    TWELVE_M_SUB_TEXT,
 )
 from config import ADMIN_CHAT_ID
 
@@ -73,13 +74,58 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, buy_sub)
-    user_data = update.message.from_user
 
-    invoice_title = ONE_M_SUB_TEXT
+    subs_list_keys = [
+        [
+            KeyboardButton(text=THREE_M_SUB_TEXT),
+        ],
+        [
+            KeyboardButton(text=SIX_M_SUB_TEXT),
+        ],
+        [KeyboardButton(text=TWELVE_M_SUB_TEXT)],
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
+        ],
+    ]
+    markup = ReplyKeyboardMarkup(subs_list_keys, resize_keyboard=True)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id, text="انتخاب کنید :", reply_markup=markup
+    )
+
+
+async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    push_menu(context, subs_list)
+    user_data = update.message.from_user
+    text = update.effective_message.text
+
+    if text == THREE_M_SUB_TEXT:
+        invoice_title = THREE_M_SUB_TEXT
+        invoice_price = three_month_price  # Replace with your price
+
+    elif text == SIX_M_SUB_TEXT:
+        invoice_title = SIX_M_SUB_TEXT
+        invoice_price = six_month_price  # Replace with your price
+
+    elif text == TWELVE_M_SUB_TEXT:
+        invoice_title = TWELVE_M_SUB_TEXT
+        invoice_price = twelve_month_price  # Replace with your price
+    else:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id, text="خطا", reply_markup=markup
+        )
+        return
+
     invoice_description = f"@{user_data['username']} اشتراک یک ماهه برای نام کاربری"
-    invoice_price = buy_self_text  # Replace with your price
+
+    # Store the invoice details in the user's context data
+    context.user_data["invoice_details"] = {
+        "title": invoice_title,
+        "description": invoice_description,
+        "price": invoice_price,
+    }
 
     # Format the invoice text in a clear and concise way
     invoice_text = f"""**Invoice**
@@ -113,15 +159,16 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo
 
     if photo:
-
         # Handle photo message
         admin_chat_id = ADMIN_CHAT_ID  # Replace with the actual chat ID obtained
 
         try:
+            invoice_details = context.user_data.get("invoice_details", {})
+
             user_data = update.message.from_user
             user_id = user_data["id"]
             user_username = user_data["username"]
-            user_sub = text
+            user_sub = invoice_details.get("title", "N/A")
 
             conn = get_db_connection()
             cur = conn.cursor()
@@ -137,6 +184,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     chat_id=update.effective_chat.id,
                     text="لطفا برای حساب خود یوزرنیم انتخاب کنید",
                 )
+                return
 
             cur.close()
             conn.close()
@@ -144,8 +192,17 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Get the file ID of the largest photo (usually the last one in the list)
             file_id = photo[-1].file_id
 
-            # Send the photo to the admin
-            await context.bot.send_photo(chat_id=admin_chat_id, photo=file_id)
+            # Retrieve the invoice details from the context data
+            invoice_text = f"""**Invoice**
+
+Title: {invoice_details.get('title', 'N/A')}
+Description: {invoice_details.get('description', 'N/A')}
+Price: {invoice_details.get('price', 'N/A')} ت"""
+
+            # Send the photo and invoice text to the admin
+            await context.bot.send_photo(
+                chat_id=admin_chat_id, photo=file_id, caption=invoice_text
+            )
 
         except Exception as e:
             print(f"Error sending photo to admin: {e}")

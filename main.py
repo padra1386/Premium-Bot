@@ -15,8 +15,10 @@ from handlers import (
     faq,
     my_subs,
     go_back,
+    subs_list,
 )
-from currencyapi import buy_self_text
+from currencyapi import three_month_price
+from texts import THREE_M_SUB_TEXT, SIX_M_SUB_TEXT, TWELVE_M_SUB_TEXT, BUY_FOR_SELF_TEXT
 
 
 def main():
@@ -26,8 +28,14 @@ def main():
     buy_sub_handler = MessageHandler(
         filters.TEXT & filters.Regex(f"^🛍️ خرید پرمیوم تلگرام$"), buy_sub
     )
+    subs_list_handler = MessageHandler(
+        filters.TEXT & filters.Regex(f"^{BUY_FOR_SELF_TEXT}$"), subs_list
+    )
     buy_self_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^🙋‍♂️ خرید برای خودم$"), buy_for_self
+        filters.TEXT & filters.Regex(f"^{THREE_M_SUB_TEXT}$")
+        | filters.Regex(f"^{SIX_M_SUB_TEXT}$")
+        | filters.Regex(f"^{TWELVE_M_SUB_TEXT}$"),
+        buy_for_self,
     )
     buy_success_handler = MessageHandler(
         filters.PHOTO,
@@ -55,6 +63,7 @@ def main():
             faq_handler,
             my_subs_handler,
             go_back_handler,
+            subs_list_handler,
         ]
     )
 
