@@ -25,6 +25,7 @@ from texts import (
 )
 from config import ADMIN_CHAT_ID
 import uuid
+from dbconn import conn, cur
 
 
 def push_menu(context: ContextTypes.DEFAULT_TYPE, menu_function):
@@ -42,6 +43,23 @@ async def go_back(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data = update.effective_user
+    user_id = str(user_data.id)  # Cast to string
+    user_username = user_data.username
+    user_first_name = user_data.first_name
+    user_last_name = user_data.last_name
+
+    # Check if the user already exists
+    cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+    existing_user = cur.fetchone()
+
+    if not existing_user:
+        cur.execute(
+            "INSERT INTO users (id, username, first_name, last_name) VALUES (%s, %s,%s,%s)",
+            (user_id, user_username, user_first_name, user_last_name),
+        )
+        conn.commit()
+
     push_menu(context, start)
 
     start_keys = [
@@ -139,7 +157,7 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Title: {invoice_title}
 Description: {invoice_description}
-Price: {invoice_price} ت
+Price: {invoice_price}
 
 **Please note:** This is a text-based representation of the invoice. 
 For official documentation, please refer to your payment processor's website.
@@ -171,15 +189,12 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         new_status = data[2]
 
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+
             cur.execute(
-                "UPDATE users SET status = %s WHERE invoice_id = %s",
+                "UPDATE invoice SET status = %s WHERE invoice_id = %s",
                 (new_status, invoice_id),
             )
             conn.commit()
-            cur.close()
-            conn.close()
 
             # Get the existing caption
             existing_caption = query.message.caption if query.message.caption else ""
@@ -218,16 +233,14 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             invoice_id = str(uuid.uuid4())[:8]  # Generate a random invoice_id
 
             user_data = update.message.from_user
+            print(user_data)
             user_id = user_data["id"]
             user_username = user_data["username"]
             user_sub = invoice_details.get("title", "N/A")
 
-            conn = get_db_connection()
-            cur = conn.cursor()
-
             if user_username:
                 cur.execute(
-                    "INSERT INTO users (id, username, sub, status, invoice_id) VALUES (%s, %s, %s, NULL, %s)",
+                    "INSERT INTO invoice (id, username, sub, status, invoice_id) VALUES (%s, %s, %s, NULL, %s)",
                     (user_id, user_username, user_sub, invoice_id),
                 )
                 conn.commit()
@@ -237,9 +250,6 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     text="لطفاً برای حساب خود یوزرنیم انتخاب کنید",
                 )
                 return
-
-            cur.close()
-            conn.close()
 
             file_id = photo[-1].file_id
 
@@ -253,17 +263,18 @@ Invoice ID: {invoice_id}"""
             inline_keyboard = [
                 [
                     InlineKeyboardButton(
-                        text="Pending Approval",
+                        text="در انتظار تایید",
                         callback_data=f"status:{invoice_id}:Pending Approval",
                     ),
                     InlineKeyboardButton(
-                        text="Reviewing", callback_data=f"status:{invoice_id}:Reviewing"
+                        text="در حال بررسی",
+                        callback_data=f"status:{invoice_id}:Reviewing",
                     ),
                     InlineKeyboardButton(
-                        text="Approved", callback_data=f"status:{invoice_id}:Approved"
+                        text="تایید شده", callback_data=f"status:{invoice_id}:Approved"
                     ),
                     InlineKeyboardButton(
-                        text="Canceled", callback_data=f"status:{invoice_id}:Canceled"
+                        text="لغو شده", callback_data=f"status:{invoice_id}:Canceled"
                     ),
                 ]
             ]
@@ -305,15 +316,11 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = update.message.from_user
     user_id = user_data["id"]
 
-    conn = get_db_connection()
-    cur = conn.cursor()
     cur.execute(
-        "SELECT username, sub, created, status FROM users WHERE id = %s",
+        "SELECT username, sub, created, status FROM invoice WHERE id = %s",
         (str(user_id),),
     )
     user_data = cur.fetchall()
-    cur.close()
-    conn.close()
 
     if user_data:
         status_translation = {

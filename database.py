@@ -18,13 +18,24 @@ def create_tables():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        """CREATE TABLE IF NOT EXISTS users (
+        """CREATE TABLE IF NOT EXISTS invoice (
             invoice_id VARCHAR(50),
             id TEXT,
             username VARCHAR(255),
             sub VARCHAR(255),
             created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status VARCHAR(50) DEFAULT NULL
+        )"""
+    )
+    conn.commit()
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS users (
+            id TEXT,
+            username VARCHAR(255),
+            first_name VARCHAR(255),
+            last_name VARCHAR(255),
+            status VARCHAR(255) DEFAULT 'active',
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )"""
     )
     conn.commit()
