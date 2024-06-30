@@ -81,22 +81,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, start)
 
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Please enter your desired username for the subscription, or click the button below to use your Telegram username.",
+    )
+
     buy_keys = [
         [
-            KeyboardButton(text=BUY_FOR_SELF_TEXT),
+            InlineKeyboardButton(
+                text="Use Telegram Username", callback_data="use_telegram_username"
+            ),
         ],
         [
-            KeyboardButton(text=BUY_FOR_FRIENDS_TEXT),
-        ],
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
+            InlineKeyboardButton(text=GO_BACK_TEXT, callback_data="go_back"),
         ],
     ]
-    markup = ReplyKeyboardMarkup(buy_keys, resize_keyboard=True)
+    markup = InlineKeyboardMarkup(buy_keys)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="انتخاب کنید :", reply_markup=markup
+        chat_id=update.effective_chat.id, text="Choose an option:", reply_markup=markup
     )
+    context.user_data["awaiting_username"] = (
+        True  # Flag to indicate that we are waiting for the username
+    )
+
+
+async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get("awaiting_username"):
+        username = update.message.text
+        context.user_data["entered_username"] = username
+        context.user_data["awaiting_username"] = False
+        await subs_list(update, context)  # Proceed to the subscription list
+    else:
+        # Handle other text messages here
+        pass
 
 
 async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -129,11 +147,9 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == THREE_M_SUB_TEXT:
         invoice_title = THREE_M_SUB_TEXT
         invoice_price = three_month_price  # Replace with your price
-
     elif text == SIX_M_SUB_TEXT:
         invoice_title = SIX_M_SUB_TEXT
         invoice_price = six_month_price  # Replace with your price
-
     elif text == TWELVE_M_SUB_TEXT:
         invoice_title = TWELVE_M_SUB_TEXT
         invoice_price = twelve_month_price  # Replace with your price
@@ -143,40 +159,50 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    invoice_description = f"@{user_data['username']} اشتراک یک ماهه برای نام کاربری"
+    username = context.user_data.get("entered_username", user_data.username)
 
-    # Store the invoice details in the user's context data
-    context.user_data["invoice_details"] = {
+    invoice_description = f"@{username} اشتراک یک ماهه برای نام کاربری"
+
+    # Process the invoice creation
+    invoice_details = {
         "title": invoice_title,
         "description": invoice_description,
         "price": invoice_price,
     }
 
-    # Format the invoice text in a clear and concise way
-    invoice_text = f"""**Invoice**
+    context.user_data["invoice_details"] = invoice_details
+
+    # Send the invoice or next steps here
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"""**Invoice**
 
 Title: {invoice_title}
 Description: {invoice_description}
-Price: {invoice_price}
+Price: {invoice_price} ت
 
-**Please note:** This is a text-based representation of the invoice. 
-For official documentation, please refer to your payment processor's website.
-
-یه عکس بفرست !!!!!!!!!!!!"""
-
-    buy_self_keys = [
-        # [
-        #     KeyboardButton(text=buy_self_text),
-        # ],
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ],
-    ]
-    markup = ReplyKeyboardMarkup(buy_self_keys, resize_keyboard=True)
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=invoice_text, reply_markup=markup
+Please wait while we process your subscription.""",
     )
+
+    # Proceed with the rest of the invoice creation and processing steps...
+
+
+async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    if data == "use_telegram_username":
+        # Retrieve username from Telegram user data
+        user_data = update.effective_user
+        username = user_data.username
+        context.user_data["entered_username"] = username
+        context.user_data["awaiting_username"] = False
+        await subs_list(update, context)  # Proceed to the subscription list
+    elif data == "go_back":
+        await go_back(update, context)
+    else:
+        await query.edit_message_text(text="Invalid option. Please try again.")
 
 
 async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):

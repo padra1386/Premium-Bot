@@ -18,6 +18,8 @@ from handlers import (
     go_back,
     subs_list,
     update_status,
+    handle_text_message,
+    handle_username_choice,
 )
 from texts import (
     THREE_M_SUB_TEXT,
@@ -69,6 +71,11 @@ def main():
     )
     status_handler = CallbackQueryHandler(update_status, pattern="^status:")
 
+    handle_text_message_handler = MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_text_message
+    )
+    handle_username_choice_handler = CallbackQueryHandler(handle_username_choice)
+
     app.add_handlers(
         [
             start_handler,
@@ -80,6 +87,8 @@ def main():
             my_subs_handler,
             go_back_handler,
             status_handler,
+            handle_text_message_handler,
+            handle_username_choice_handler,
         ]
     )
 
