@@ -5,6 +5,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
     ContextTypes,
+    CallbackQueryHandler,
 )
 from config import TOKEN
 from handlers import (
@@ -16,6 +17,7 @@ from handlers import (
     my_subs,
     go_back,
     subs_list,
+    update_status,
 )
 from currencyapi import three_month_price
 from texts import THREE_M_SUB_TEXT, SIX_M_SUB_TEXT, TWELVE_M_SUB_TEXT, BUY_FOR_SELF_TEXT
@@ -53,6 +55,7 @@ def main():
         filters.TEXT & filters.Regex(f"^🔙 بازگشت$"),
         go_back,
     )
+    status_handler = CallbackQueryHandler(update_status, pattern="^status:")
 
     app.add_handlers(
         [
@@ -64,6 +67,7 @@ def main():
             my_subs_handler,
             go_back_handler,
             subs_list_handler,
+            status_handler,
         ]
     )
 

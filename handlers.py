@@ -1,4 +1,10 @@
-from telegram import Update, KeyboardButton, ReplyKeyboardMarkup
+from telegram import (
+    Update,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from telegram.ext import ContextTypes
 from database import get_db_connection
 from utils import push_menu
@@ -18,6 +24,7 @@ from texts import (
     TWELVE_M_SUB_TEXT,
 )
 from config import ADMIN_CHAT_ID
+import uuid
 
 
 def push_menu(context: ContextTypes.DEFAULT_TYPE, menu_function):
@@ -154,16 +161,61 @@ For official documentation, please refer to your payment processor's website.
     )
 
 
+async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data.split(":")
+    if len(data) == 3 and data[0] == "status":
+        invoice_id = data[1]
+        new_status = data[2]
+
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE users SET status = %s WHERE invoice_id = %s",
+                (new_status, invoice_id),
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            # Get the existing caption
+            existing_caption = query.message.caption if query.message.caption else ""
+
+            # Append the status update to the existing caption
+            updated_caption = f"{existing_caption}\n\nUpdated status to: {new_status}"
+
+            # Update the message caption without removing inline buttons
+            await query.edit_message_caption(
+                caption=updated_caption,
+                reply_markup=query.message.reply_markup,
+            )
+
+        except Exception as e:
+            print(f"Error updating status: {e}")
+            await query.edit_message_caption(
+                caption="Failed to update status.",
+                reply_markup=query.message.reply_markup,
+            )
+    else:
+        await query.edit_message_caption(
+            caption="Invalid action.", reply_markup=query.message.reply_markup
+        )
+
+
+# Add this to the function that sends the invoice to the admin
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
     photo = update.message.photo
 
     if photo:
-        # Handle photo message
-        admin_chat_id = ADMIN_CHAT_ID  # Replace with the actual chat ID obtained
+        admin_chat_id = ADMIN_CHAT_ID
 
         try:
             invoice_details = context.user_data.get("invoice_details", {})
+            invoice_id = str(uuid.uuid4())[:8]  # Generate a random invoice_id
 
             user_data = update.message.from_user
             user_id = user_data["id"]
@@ -175,33 +227,53 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if user_username:
                 cur.execute(
-                    "INSERT INTO users (id, username, sub) VALUES (%s, %s, %s)",
-                    (user_id, user_username, user_sub),
+                    "INSERT INTO users (id, username, sub, status, invoice_id) VALUES (%s, %s, %s, NULL, %s)",
+                    (user_id, user_username, user_sub, invoice_id),
                 )
                 conn.commit()
             else:
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    text="لطفا برای حساب خود یوزرنیم انتخاب کنید",
+                    text="لطفاً برای حساب خود یوزرنیم انتخاب کنید",
                 )
                 return
 
             cur.close()
             conn.close()
 
-            # Get the file ID of the largest photo (usually the last one in the list)
             file_id = photo[-1].file_id
 
-            # Retrieve the invoice details from the context data
             invoice_text = f"""**Invoice**
 
 Title: {invoice_details.get('title', 'N/A')}
 Description: {invoice_details.get('description', 'N/A')}
-Price: {invoice_details.get('price', 'N/A')} ت"""
+Price: {invoice_details.get('price', 'N/A')} ت
+Invoice ID: {invoice_id}"""
 
-            # Send the photo and invoice text to the admin
+            inline_keyboard = [
+                [
+                    InlineKeyboardButton(
+                        text="Pending Approval",
+                        callback_data=f"status:{invoice_id}:Pending Approval",
+                    ),
+                    InlineKeyboardButton(
+                        text="Reviewing", callback_data=f"status:{invoice_id}:Reviewing"
+                    ),
+                    InlineKeyboardButton(
+                        text="Approved", callback_data=f"status:{invoice_id}:Approved"
+                    ),
+                    InlineKeyboardButton(
+                        text="Canceled", callback_data=f"status:{invoice_id}:Canceled"
+                    ),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(inline_keyboard)
+
             await context.bot.send_photo(
-                chat_id=admin_chat_id, photo=file_id, caption=invoice_text
+                chat_id=admin_chat_id,
+                photo=file_id,
+                caption=invoice_text,
+                reply_markup=reply_markup,
             )
 
         except Exception as e:
@@ -236,17 +308,25 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT username, sub, created FROM users WHERE id = %s", (str(user_id),)
+        "SELECT username, sub, created, status FROM users WHERE id = %s",
+        (str(user_id),),
     )
     user_data = cur.fetchall()
     cur.close()
     conn.close()
 
     if user_data:
+        status_translation = {
+            "Pending Approval": "در انتظار تأیید",
+            "Reviewing": "در حال بررسی",
+            "Approved": "تأیید شده",
+            "Canceled": "لغو شده",
+            None: "نامشخص",
+        }
         subs_list = "\n".join(
             [
-                f"- @{username}: {sub} Premium (Created on: {created.strftime('%Y-%m-%d %H:%M:%S')})"
-                for username, sub, created in user_data
+                f"- @{username}: {sub} Premium (Created on: {created.strftime('%Y-%m-%d %H:%M:%S')}) - Status: {status_translation.get(status, 'نامشخص')}"
+                for username, sub, created, status in user_data
             ]
         )
         response_message = f"اشتراک‌های شما:\n{subs_list}"

@@ -13,15 +13,18 @@ def get_db_connection():
     return conn
 
 
+# In database.py
 def create_tables():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
         """CREATE TABLE IF NOT EXISTS users (
+            invoice_id VARCHAR(50),
             id TEXT,
             username VARCHAR(255),
             sub VARCHAR(255),
-            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(50) DEFAULT NULL
         )"""
     )
     conn.commit()
