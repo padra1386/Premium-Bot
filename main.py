@@ -5,6 +5,8 @@ from telegram.ext import (
     MessageHandler,
     CallbackQueryHandler,
     filters,
+    TypeHandler,
+    ContextTypes,
 )
 from config import TOKEN
 from handlers import (
@@ -20,6 +22,7 @@ from handlers import (
     handle_text_message,
     handle_username_choice,
     handle_sub_choice,
+    add_user,
 )
 from texts import (
     THREE_M_SUB_TEXT,
@@ -30,14 +33,19 @@ from texts import (
     FAQ_TEXT,
     MY_PURCHASES_TEXT,
     GO_BACK_TEXT,
+    START_TEXT,
 )
 from dbconn import conn, cur
+
+
+async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await add_user(update, context)
 
 
 def main():
     app = Application.builder().token(TOKEN).build()
 
-    start_handler = CommandHandler("start", start)
+    start_handler = CommandHandler(START_TEXT, start)
     buy_sub_handler = MessageHandler(
         filters.TEXT & filters.Regex(f"^{BUY_PREMIUM_TEXT}$"), buy_sub
     )
@@ -78,6 +86,8 @@ def main():
         handle_username_choice, pattern="^use_telegram_username|go_back$"
     )
     sub_choice_handler = CallbackQueryHandler(handle_sub_choice, pattern=r"^sub:\d+m")
+
+    app.add_handler(TypeHandler(Update, process_update), group=-1)
 
     app.add_handlers(
         [
