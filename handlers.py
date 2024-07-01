@@ -22,6 +22,19 @@ from texts import (
     THREE_M_SUB_TEXT,
     SIX_M_SUB_TEXT,
     TWELVE_M_SUB_TEXT,
+    PENDING_APPROVAL_TEXT,
+    APPROVED_TEXT,
+    CANCELLED_TEXT,
+    REVIEWING_TEXT,
+    CHOOSE_USERNAME_ERROR_TEXT,
+    SUB_HELP_TEXT,
+    WELCOME_TEXT,
+    CHOOSE_OPTION_TEXT,
+    INVALID_OPTION_TEXT,
+    FAILED_UPDATE_STATUS_TEXT,
+    ERROR_SENDING_PHOTO,
+    UNKNOWN_TEXT,
+    NO_SUB_TEXT,
 )
 from config import ADMIN_CHAT_ID
 import uuid
@@ -74,7 +87,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="خوش آمدید", reply_markup=markup
+        chat_id=update.effective_chat.id, text=WELCOME_TEXT, reply_markup=markup
     )
 
 
@@ -83,23 +96,22 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text="Please enter your desired username for the subscription, or click the button below to use your Telegram username.",
+        text=SUB_HELP_TEXT,
     )
 
     buy_keys = [
         [
             InlineKeyboardButton(
-                text="Use Telegram Username", callback_data="use_telegram_username"
+                text=BUY_FOR_SELF_TEXT, callback_data="use_telegram_username"
             ),
-        ],
-        [
-            InlineKeyboardButton(text=GO_BACK_TEXT, callback_data="go_back"),
         ],
     ]
     markup = InlineKeyboardMarkup(buy_keys)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="Choose an option:", reply_markup=markup
+        chat_id=update.effective_chat.id,
+        text=CHOOSE_OPTION_TEXT,
+        reply_markup=markup,
     )
     context.user_data["awaiting_username"] = (
         True  # Flag to indicate that we are waiting for the username
@@ -122,41 +134,60 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     subs_list_keys = [
         [
-            KeyboardButton(text=THREE_M_SUB_TEXT),
+            InlineKeyboardButton(text=THREE_M_SUB_TEXT, callback_data="sub:3m"),
         ],
         [
-            KeyboardButton(text=SIX_M_SUB_TEXT),
+            InlineKeyboardButton(text=SIX_M_SUB_TEXT, callback_data="sub:6m"),
         ],
-        [KeyboardButton(text=TWELVE_M_SUB_TEXT)],
         [
-            KeyboardButton(text=GO_BACK_TEXT),
+            InlineKeyboardButton(text=TWELVE_M_SUB_TEXT, callback_data="sub:12m"),
         ],
     ]
-    markup = ReplyKeyboardMarkup(subs_list_keys, resize_keyboard=True)
+    markup = InlineKeyboardMarkup(subs_list_keys)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="انتخاب کنید :", reply_markup=markup
+        chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup
     )
+    print("Subs list sent with buttons: ", subs_list_keys)  # Debugging line
+
+
+async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+
+    print(f"Received callback data: {data}")  # Debugging line
+
+    if data == "sub:3m":
+        context.user_data["sub_choice"] = THREE_M_SUB_TEXT
+        context.user_data["sub_price"] = three_month_price
+    elif data == "sub:6m":
+        context.user_data["sub_choice"] = SIX_M_SUB_TEXT
+        context.user_data["sub_price"] = six_month_price
+    elif data == "sub:12m":
+        context.user_data["sub_choice"] = TWELVE_M_SUB_TEXT
+        context.user_data["sub_price"] = twelve_month_price
+    else:
+        print(f"Invalid option received: {data}")  # Debugging line
+        await query.edit_message_text(text=INVALID_OPTION_TEXT)
+        return
+
+    await buy_for_self(update, context)
 
 
 async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(context, subs_list)
-    user_data = update.message.from_user
-    text = update.effective_message.text
+    user_data = (
+        update.callback_query.from_user
+        if update.callback_query
+        else update.message.from_user
+    )
 
-    if text == THREE_M_SUB_TEXT:
-        invoice_title = THREE_M_SUB_TEXT
-        invoice_price = three_month_price  # Replace with your price
-    elif text == SIX_M_SUB_TEXT:
-        invoice_title = SIX_M_SUB_TEXT
-        invoice_price = six_month_price  # Replace with your price
-    elif text == TWELVE_M_SUB_TEXT:
-        invoice_title = TWELVE_M_SUB_TEXT
-        invoice_price = twelve_month_price  # Replace with your price
-    else:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id, text="خطا", reply_markup=markup
-        )
+    invoice_title = context.user_data.get("sub_choice")
+    invoice_price = context.user_data.get("sub_price")
+
+    if not invoice_title or not invoice_price:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="خطا")
         return
 
     username = context.user_data.get("entered_username", user_data.username)
@@ -202,7 +233,7 @@ async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_T
     elif data == "go_back":
         await go_back(update, context)
     else:
-        await query.edit_message_text(text="Invalid option. Please try again.")
+        await query.edit_message_text(text=INVALID_OPTION_TEXT)
 
 
 async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -237,7 +268,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"Error updating status: {e}")
             await query.edit_message_caption(
-                caption="Failed to update status.",
+                caption=FAILED_UPDATE_STATUS_TEXT,
                 reply_markup=query.message.reply_markup,
             )
     else:
@@ -273,7 +304,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 await context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    text="لطفاً برای حساب خود یوزرنیم انتخاب کنید",
+                    text=CHOOSE_USERNAME_ERROR_TEXT,
                 )
                 return
 
@@ -289,18 +320,20 @@ Invoice ID: {invoice_id}"""
             inline_keyboard = [
                 [
                     InlineKeyboardButton(
-                        text="در انتظار تایید",
+                        text=PENDING_APPROVAL_TEXT,
                         callback_data=f"status:{invoice_id}:Pending Approval",
                     ),
                     InlineKeyboardButton(
-                        text="در حال بررسی",
+                        text=REVIEWING_TEXT,
                         callback_data=f"status:{invoice_id}:Reviewing",
                     ),
                     InlineKeyboardButton(
-                        text="تایید شده", callback_data=f"status:{invoice_id}:Approved"
+                        text=APPROVED_TEXT,
+                        callback_data=f"status:{invoice_id}:Approved",
                     ),
                     InlineKeyboardButton(
-                        text="لغو شده", callback_data=f"status:{invoice_id}:Canceled"
+                        text=CANCELLED_TEXT,
+                        callback_data=f"status:{invoice_id}:Canceled",
                     ),
                 ]
             ]
@@ -317,7 +350,7 @@ Invoice ID: {invoice_id}"""
             print(f"Error sending photo to admin: {e}")
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="An error occurred while sending the photo to the admin.",
+                text=ERROR_SENDING_PHOTO,
             )
 
 
@@ -350,21 +383,21 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_data:
         status_translation = {
-            "Pending Approval": "در انتظار تأیید",
-            "Reviewing": "در حال بررسی",
-            "Approved": "تأیید شده",
-            "Canceled": "لغو شده",
-            None: "نامشخص",
+            "Pending Approval": PENDING_APPROVAL_TEXT,
+            "Reviewing": REVIEWING_TEXT,
+            "Approved": APPROVED_TEXT,
+            "Canceled": CANCELLED_TEXT,
+            None: UNKNOWN_TEXT,
         }
         subs_list = "\n".join(
             [
-                f"- @{username}: {sub} Premium (Created on: {created.strftime('%Y-%m-%d %H:%M:%S')}) - Status: {status_translation.get(status, 'نامشخص')}"
+                f"- @{username}: {sub} Premium (Created on: {created.strftime('%Y-%m-%d %H:%M:%S')}) - Status: {status_translation.get(status, UNKNOWN_TEXT)}"
                 for username, sub, created, status in user_data
             ]
         )
         response_message = f"اشتراک‌های شما:\n{subs_list}"
     else:
-        response_message = "شما اشتراکی ندارید."
+        response_message = NO_SUB_TEXT
 
     my_subs_keys = [
         [
