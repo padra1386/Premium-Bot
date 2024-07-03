@@ -82,9 +82,9 @@ def main():
     handle_text_message_handler = MessageHandler(
         filters.TEXT & ~filters.COMMAND, handle_text_message
     )
-    handle_username_choice_handler = CallbackQueryHandler(
-        handle_username_choice, pattern="^use_telegram_username|go_back$"
-    )
+    # handle_username_choice_handler = CallbackQueryHandler(
+    #     handle_username_choice, pattern="^use_telegram_username|go_back$"
+    # )
     sub_choice_handler = CallbackQueryHandler(handle_sub_choice, pattern=r"^sub:\d+m")
 
     app.add_handler(TypeHandler(Update, process_update), group=-1)

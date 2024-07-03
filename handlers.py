@@ -102,7 +102,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-    push_menu(user_id, start)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -110,13 +109,9 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     buy_keys = [
-        [
-            InlineKeyboardButton(
-                text=BUY_FOR_SELF_TEXT, callback_data="use_telegram_username"
-            ),
-        ],
+        [KeyboardButton(text=BUY_FOR_SELF_TEXT)],
     ]
-    markup = InlineKeyboardMarkup(buy_keys)
+    markup = ReplyKeyboardMarkup(buy_keys, resize_keyboard=True, one_time_keyboard=True)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -128,12 +123,19 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
+    text = update.message.text
 
     if redis_conn.get(f"awaiting_username:{user_id}") == "true":
-        username = update.message.text
-        redis_conn.set(f"entered_username:{user_id}", username)
-        redis_conn.set(f"awaiting_username:{user_id}", "false")
-        await subs_list(update, context)  # Proceed to the subscription list
+        if text == BUY_FOR_SELF_TEXT:
+            user_data = update.effective_user
+            username = user_data.username
+            redis_conn.set(f"entered_username:{user_id}", username)
+            redis_conn.set(f"awaiting_username:{user_id}", "false")
+            await subs_list(update, context)  # Proceed to the subscription list
+        else:
+            redis_conn.set(f"entered_username:{user_id}", text)
+            redis_conn.set(f"awaiting_username:{user_id}", "false")
+            await subs_list(update, context)  # Proceed to the subscription list
     else:
         # Handle other text messages here
         pass
@@ -212,6 +214,9 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = redis_conn.get(f"entered_username:{user_id}")
     if not username:
         username = user_data.username
+    else:
+        # Clear the custom username after using it
+        redis_conn.delete(f"entered_username:{user_id}")
 
     invoice_description = f"@{username} اشتراک یک ماهه برای نام کاربری"
 
@@ -239,23 +244,23 @@ Please wait while we process your subscription.""",
     )
 
 
-async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    query = update.callback_query
-    await query.answer()
-    data = query.data
+# async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     user_id = str(update.effective_user.id)
+#     query = update.callback_query
+#     await query.answer()
+#     data = query.data
 
-    if data == "use_telegram_username":
-        # Retrieve username from Telegram user data
-        user_data = update.effective_user
-        username = user_data.username
-        redis_conn.set(f"entered_username:{user_id}", username)
-        redis_conn.set(f"awaiting_username:{user_id}", "false")
-        await subs_list(update, context)  # Proceed to the subscription list
-    elif data == "go_back":
-        await go_back(update, context)
-    else:
-        await query.edit_message_text(text=INVALID_OPTION_TEXT)
+#     if data == "use_telegram_username":
+#         # Retrieve username from Telegram user data
+#         user_data = update.effective_user
+#         username = user_data.username
+#         redis_conn.set(f"entered_username:{user_id}", username)
+#         redis_conn.set(f"awaiting_username:{user_id}", "false")
+#         await subs_list(update, context)  # Proceed to the subscription list
+#     elif data == "go_back":
+#         await go_back(update, context)
+#     else:
+#         await query.edit_message_text(text=INVALID_OPTION_TEXT)
 
 
 async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
