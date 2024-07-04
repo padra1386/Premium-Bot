@@ -48,7 +48,17 @@ from dbconn import conn, cur
 from ridi import redis_conn
 
 
-from session import set_session, get_session, delete_session
+def set_session(user_id, key, value):
+    session_key = f"user_session:{user_id}:{key}"
+    redis_conn.set(session_key, value)
+
+def get_session(user_id, key):
+    session_key = f"user_session:{user_id}:{key}"
+    return redis_conn.get(session_key)
+
+def delete_session(user_id, key):
+    session_key = f"user_session:{user_id}:{key}"
+    redis_conn.delete(session_key)
 
 
 def push_menu(user_id: str, menu_function):
@@ -242,25 +252,6 @@ Please wait while we process your subscription.""",
     )
 
 
-# async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     user_id = str(update.effective_user.id)
-#     query = update.callback_query
-#     await query.answer()
-#     data = query.data
-
-#     if data == "use_telegram_username":
-#         # Retrieve username from Telegram user data
-#         user_data = update.effective_user
-#         username = user_data.username
-#         redis_conn.set(f"entered_username:{user_id}", username)
-#         redis_conn.set(f"awaiting_username:{user_id}", "false")
-#         await subs_list(update, context)  # Proceed to the subscription list
-#     elif data == "go_back":
-#         await go_back(update, context)
-#     else:
-#         await query.edit_message_text(text=INVALID_OPTION_TEXT)
-
-
 async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -289,182 +280,104 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             text=REVIEWING_TEXT,
-                            callback_data=f"status:{invoice_id}:Reviewing",
+                            callback_data=f"update_status:{invoice_id}:reviewing",
                         ),
-                        InlineKeyboardButton(
-                            text=CANCELLED_TEXT,
-                            callback_data=f"status:{invoice_id}:Canceled",
-                        ),
-                    ]
-                ]
-            elif new_status == "Reviewing":
-                inline_keyboard = [
-                    [
                         InlineKeyboardButton(
                             text=APPROVED_TEXT,
-                            callback_data=f"status:{invoice_id}:Approved",
+                            callback_data=f"update_status:{invoice_id}:approved",
                         ),
                         InlineKeyboardButton(
                             text=CANCELLED_TEXT,
-                            callback_data=f"status:{invoice_id}:Canceled",
+                            callback_data=f"update_status:{invoice_id}:cancelled",
                         ),
                     ]
                 ]
             elif new_status == "Approved":
-                inline_keyboard = []
-            elif new_status == "Canceled":
-                inline_keyboard = []
+                inline_keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            text=PENDING_APPROVAL_TEXT,
+                            callback_data=f"update_status:{invoice_id}:pending_approval",
+                        ),
+                        InlineKeyboardButton(
+                            text=REVIEWING_TEXT,
+                            callback_data=f"update_status:{invoice_id}:reviewing",
+                        ),
+                        InlineKeyboardButton(
+                            text=CANCELLED_TEXT,
+                            callback_data=f"update_status:{invoice_id}:cancelled",
+                        ),
+                    ]
+                ]
+            elif new_status == "Cancelled":
+                inline_keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            text=PENDING_APPROVAL_TEXT,
+                            callback_data=f"update_status:{invoice_id}:pending_approval",
+                        ),
+                        InlineKeyboardButton(
+                            text=REVIEWING_TEXT,
+                            callback_data=f"update_status:{invoice_id}:reviewing",
+                        ),
+                        InlineKeyboardButton(
+                            text=APPROVED_TEXT,
+                            callback_data=f"update_status:{invoice_id}:approved",
+                        ),
+                    ]
+                ]
+            else:
+                inline_keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            text=PENDING_APPROVAL_TEXT,
+                            callback_data=f"update_status:{invoice_id}:pending_approval",
+                        ),
+                        InlineKeyboardButton(
+                            text=APPROVED_TEXT,
+                            callback_data=f"update_status:{invoice_id}:approved",
+                        ),
+                        InlineKeyboardButton(
+                            text=CANCELLED_TEXT,
+                            callback_data=f"update_status:{invoice_id}:cancelled",
+                        ),
+                    ]
+                ]
 
-            reply_markup = InlineKeyboardMarkup(inline_keyboard)
-
-            # Update the message caption and buttons
+            # Edit the message caption and inline buttons
             await query.edit_message_caption(
                 caption=updated_caption,
-                reply_markup=reply_markup,
+                reply_markup=InlineKeyboardMarkup(inline_keyboard),
             )
-
         except Exception as e:
-            print(f"Error updating status: {e}")
-            await query.edit_message_caption(
-                caption=FAILED_UPDATE_STATUS_TEXT,
-                reply_markup=query.message.reply_markup,
-            )
+            print(f"Failed to update status: {str(e)}")
+            await query.edit_message_text(text=FAILED_UPDATE_STATUS_TEXT)
     else:
-        await query.edit_message_caption(
-            caption="Invalid action.", reply_markup=query.message.reply_markup
-        )
-
-
-# Add this to the function that sends the invoice to the admin
-async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    text = update.effective_message.text
-    photo = update.message.photo
-
-    if photo:
-        admin_chat_id = ADMIN_CHAT_ID
-
-        try:
-            invoice_details_str = get_session(user_id, "invoice_details")
-            if not invoice_details_str:
-                raise ValueError("Invoice details not found in Redis")
-
-            # Deserialize the invoice details
-            invoice_details = json.loads(invoice_details_str)
-
-            invoice_id = str(uuid.uuid4())[:8]  # Generate a random invoice_id
-
-            user_data = update.message.from_user
-            user_id = user_data.id
-            user_username = user_data.username
-            user_sub = invoice_details.get("title", "N/A")
-
-            if user_username:
-                cur.execute(
-                    "INSERT INTO invoice (id, username, sub, status, invoice_id) VALUES (%s, %s, %s, NULL, %s)",
-                    (user_id, user_username, user_sub, invoice_id),
-                )
-                conn.commit()
-            else:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=CHOOSE_USERNAME_ERROR_TEXT,
-                )
-                return
-
-            file_id = photo[-1].file_id
-
-            invoice_text = f"""**Invoice**
-
-Title: {invoice_details.get('title', 'N/A')}
-Description: {invoice_details.get('description', 'N/A')}
-Price: {invoice_details.get('price', 'N/A')} ت
-Invoice ID: {invoice_id}"""
-
-            inline_keyboard = [
-                [
-                    InlineKeyboardButton(
-                        text=PENDING_APPROVAL_TEXT,
-                        callback_data=f"status:{invoice_id}:Pending Approval",
-                    ),
-                    InlineKeyboardButton(
-                        text=CANCELLED_TEXT,
-                        callback_data=f"status:{invoice_id}:Canceled",
-                    ),
-                ]
-            ]
-            reply_markup = InlineKeyboardMarkup(inline_keyboard)
-
-            await context.bot.send_photo(
-                chat_id=admin_chat_id,
-                photo=file_id,
-                caption=invoice_text,
-                reply_markup=reply_markup,
-            )
-
-        except Exception as e:
-            print(ERROR_SENDING_PHOTO)
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=ERROR_SENDING_PHOTO,
-            )
-            print(e)
+        await query.edit_message_text(text=INVALID_OPTION_TEXT)
 
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=FAQ_TEXT)
+
+
+async def my_purchases(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-    push_menu(user_id, start)
+    try:
+        # Fetch user's purchases from the database
+        cur.execute("SELECT * FROM purchases WHERE user_id = %s", (user_id,))
+        purchases = cur.fetchall()
 
-    faq_keys = [
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ],
-    ]
-    markup = ReplyKeyboardMarkup(faq_keys, resize_keyboard=True)
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=LOREM, reply_markup=markup
-    )
-
-
-async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    push_menu(user_id, start)
-
-    user_data = update.message.from_user
-    user_id = user_data["id"]
-
-    cur.execute(
-        "SELECT username, sub, created, status FROM invoice WHERE id = %s",
-        (str(user_id),),
-    )
-    user_data = cur.fetchall()
-
-    if user_data:
-        status_translation = {
-            "Pending Approval": PENDING_APPROVAL_TEXT,
-            "Reviewing": REVIEWING_TEXT,
-            "Approved": APPROVED_TEXT,
-            "Canceled": CANCELLED_TEXT,
-            None: UNKNOWN_TEXT,
-        }
-        subs_list = "\n".join(
-            [
-                f"- @{username}: {sub} Premium (Created on: {created.strftime('%Y-%m-%d %H:%M:%S')}) - Status: {status_translation.get(status, UNKNOWN_TEXT)}"
-                for username, sub, created, status in user_data
-            ]
+        if purchases:
+            for purchase in purchases:
+                purchase_info = f"Purchase ID: {purchase[0]}\nUsername: {purchase[1]}\nSubscription: {purchase[2]}\nStatus: {purchase[3]}"
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id, text=purchase_info
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id, text="No purchases found."
+            )
+    except Exception as e:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id, text=f"An error occurred: {str(e)}"
         )
-        response_message = f"اشتراک‌های شما:\n{subs_list}"
-    else:
-        response_message = NO_SUB_TEXT
-
-    my_subs_keys = [
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ],
-    ]
-    markup = ReplyKeyboardMarkup(my_subs_keys, resize_keyboard=True)
-
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=response_message, reply_markup=markup
-    )

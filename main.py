@@ -35,6 +35,7 @@ from texts import (
     START_TEXT,
 )
 from dbconn import conn, cur
+from ridi import redis_conn
 
 
 async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -81,8 +82,6 @@ def main():
     handle_text_message_handler = MessageHandler(
         filters.TEXT & ~filters.COMMAND, handle_text_message
     )
-    #
-
     sub_choice_handler = CallbackQueryHandler(handle_sub_choice, pattern=r"^sub:\d+m")
 
     app.add_handler(TypeHandler(Update, process_update), group=-1)
