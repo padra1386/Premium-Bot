@@ -1,7 +1,7 @@
 from currencyapi import (
-    three_month_price_rounded,
-    six_month_price_rounded,
-    twelve_month_price_rounded,
+    three_month_price,
+    six_month_price,
+    twelve_month_price,
 )
 
 WELCOME_TEXT = "خوش آمدید"
@@ -14,9 +14,9 @@ LOREM = "لورم ایپسوم متن ساختگی با تولید سادگی ن
 FAQ_TEXT = "❓ سوالات پر تکرار"
 MY_PURCHASES_TEXT = "❇️ درخواست های من"
 GO_BACK_TEXT = "🔙 بازگشت"
-THREE_M_SUB_TEXT = f"{three_month_price_rounded} تلگرام پرمیوم سه ماهه"
-SIX_M_SUB_TEXT = f"{six_month_price_rounded} تلگرام پرمیوم شش ماهه"
-TWELVE_M_SUB_TEXT = f"{twelve_month_price_rounded} تلگرام پرمیوم دوازده ماهه"
+THREE_M_SUB_TEXT = f"{three_month_price} تلگرام پرمیوم سه ماهه"
+SIX_M_SUB_TEXT = f"{six_month_price} تلگرام پرمیوم شش ماهه"
+TWELVE_M_SUB_TEXT = f"{twelve_month_price} تلگرام پرمیوم دوازده ماهه"
 PENDING_APPROVAL_TEXT = "در انتظار تایید"
 REVIEWING_TEXT = "در حال بررسی"
 APPROVED_TEXT = "تایید شده"

@@ -39,6 +39,15 @@ def create_tables():
         )"""
     )
     conn.commit()
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS services (
+            service_name VARCHAR(255),
+            price FLOAT(24), 
+            fee FLOAT(24),
+            profit FLOAT(24)
+        )"""
+    )
+    conn.commit()
     cur.close()
     conn.close()
 

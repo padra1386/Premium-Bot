@@ -10,7 +10,12 @@ from telegram.ext import ContextTypes
 from database import get_db_connection
 from utils import push_menu
 import requests
-from currencyapi import three_month_price, six_month_price, twelve_month_price
+from currencyapi import (
+    three_month_price,
+    six_month_price,
+    twelve_month_price,
+    update_data,
+)
 from texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,
@@ -83,6 +88,7 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     push_menu(user_id, start)
+    update_data()
 
     start_keys = [
         [
@@ -103,11 +109,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=SUB_HELP_TEXT,
-    )
-
     buy_keys = [
         [KeyboardButton(text=BUY_FOR_SELF_TEXT)],
     ]
@@ -115,7 +116,7 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=CHOOSE_OPTION_TEXT,
+        text=SUB_HELP_TEXT,
         reply_markup=markup,
     )
     redis_conn.set(f"awaiting_username:{user_id}", "true")
