@@ -8,7 +8,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 from database import get_db_connection
-from utils import push_menu
+from utils import push_menu, is_valid_username
 import requests
 from currencyapi import (
     three_month_price,
@@ -41,6 +41,8 @@ from texts import (
     ERROR_SENDING_PHOTO,
     UNKNOWN_TEXT,
     NO_SUB_TEXT,
+    USERNAME_LIMITS_TEXT,
+    STATUS_UPDATED_TEXT,
 )
 from config import ADMIN_CHAT_ID
 import uuid
@@ -137,9 +139,15 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             delete_session(user_id, "awaiting_username")
             await subs_list(update, context)  # Proceed to the subscription list
         else:
-            set_session(user_id, "entered_username", text)
-            delete_session(user_id, "awaiting_username")
-            await subs_list(update, context)  # Proceed to the subscription list
+            if is_valid_username(text):
+                set_session(user_id, "entered_username", text)
+                delete_session(user_id, "awaiting_username")
+                await subs_list(update, context)  # Proceed to the subscription list
+            else:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=USERNAME_LIMITS_TEXT,
+                )
     else:
         # Handle other text messages here
         pass
@@ -165,7 +173,6 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup
     )
-    print("Subs list sent with buttons: ", subs_list_keys)  # Debugging line
 
 
 async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -173,8 +180,6 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-
-    print(f"Received callback data: {data}")  # Debugging line
 
     if data == "sub:3m":
         set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
@@ -186,7 +191,6 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
         set_session(user_id, "sub_price", str(twelve_month_price))  # Store as string
     else:
-        print(INVALID_OPTION_TEXT)  # Debugging line
         await query.edit_message_text(text=INVALID_OPTION_TEXT)
         return
 
@@ -218,12 +222,12 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Clear the custom username after using it
         delete_session(user_id, "entered_username")
 
-    invoice_description = f"@{username} اشتراک یک ماهه برای نام کاربری"
+    invoice_username = f"@{username}"
 
     # Process the invoice creation
     invoice_details = {
         "title": invoice_title,
-        "description": invoice_description,
+        "description": invoice_username,
         "price": invoice_price,
     }
 
@@ -232,13 +236,20 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Send the invoice or next steps here
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"""**Invoice**
+        text=f"""🧾 فاکتور شما ایجاد شد. 
 
-Title: {invoice_title}
-Description: {invoice_description}
-Price: {invoice_price} ت
+    💢 درخواست: {invoice_title} 
 
-Please wait while we process your subscription.""",
+    🛍 مبلغ فاکتور: {invoice_price} تومان
+
+    ✅ قابل پرداخت: {invoice_price} تومان
+    🔸 شماره کارت: 
+    12345678998765432
+
+    برای یوزر نیم : {invoice_username}
+
+
+    📌 لطفا اسکرین شات واریزی را برای ربات ارسال نمایید""",
     )
 
 
@@ -265,11 +276,27 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data.split(":")
-    invoice_id = data[1] if len(data) > 1 else None
-    new_status = data[2] if len(data) > 2 else None
 
-    if invoice_id and new_status:
-        try:
+    invoice_id = data[1]
+    new_status = data[2]
+
+    if new_status == "Pending Approval":
+        persian_new_status = PENDING_APPROVAL_TEXT
+    elif new_status == "Reviewing":
+        persian_new_status = REVIEWING_TEXT
+    elif new_status == "Approved":
+        persian_new_status = APPROVED_TEXT
+    else:
+        persian_new_status = CANCELLED_TEXT
+
+    try:
+        # Fetch the invoice to check if it exists
+        cur.execute("SELECT id, sub FROM invoice WHERE invoice_id = %s", (invoice_id,))
+        result = cur.fetchall()
+        print(result)
+        user_chat_id, sub_name = result[0]
+
+        if result:
             # Update the status in the database
             cur.execute(
                 "UPDATE invoice SET status = %s WHERE invoice_id = %s",
@@ -277,13 +304,17 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             conn.commit()
 
-            # Get the existing caption
+            # Get the existing caption and remove any existing status update
             existing_caption = query.message.caption if query.message.caption else ""
+            if STATUS_UPDATED_TEXT in existing_caption:
+                existing_caption = existing_caption.split(f"\n{STATUS_UPDATED_TEXT}")[0]
 
-            # Append the status update to the existing caption
-            updated_caption = f"{existing_caption}\n\nUpdated status to: {new_status}"
+            updated_caption = (
+                f"{existing_caption}\n\n{STATUS_UPDATED_TEXT}{persian_new_status}"
+            )
 
-            # Determine the new inline buttons based on the new status
+            # Define the inline keyboard based on the new status
+            inline_keyboard = []
             if new_status == "Pending Approval":
                 inline_keyboard = [
                     [
@@ -311,36 +342,47 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ]
                 ]
             elif new_status == "Approved":
+                await context.bot.send_message(
+                    chat_id=user_chat_id,
+                    text=f"مشتری گرامی درخواست '{sub_name}' شما تایید شد",
+                )
+                delete_session(user_chat_id, "invoice_details")
                 inline_keyboard = []
             elif new_status == "Canceled":
+                await context.bot.send_message(
+                    chat_id=user_chat_id,
+                    text=f"مشتری گرامی درخواست '{sub_name}' شما لغو شد",
+                )
+                delete_session(user_chat_id, "invoice_details")
+
                 inline_keyboard = []
 
-            reply_markup = InlineKeyboardMarkup(inline_keyboard)
+            reply_markup = (
+                InlineKeyboardMarkup(inline_keyboard) if inline_keyboard else None
+            )
 
             # Update the message caption and buttons
             await query.edit_message_caption(
                 caption=updated_caption,
                 reply_markup=reply_markup,
             )
-
-        except Exception as e:
-            print(f"Error updating status: {e}")
+        else:
             await query.edit_message_caption(
-                caption=FAILED_UPDATE_STATUS_TEXT,
-                reply_markup=query.message.reply_markup,
+                caption="Invoice not found.", reply_markup=query.message.reply_markup
             )
-    else:
+    except Exception as e:
         await query.edit_message_caption(
-            caption="Invalid action.", reply_markup=query.message.reply_markup
+            caption=f"{FAILED_UPDATE_STATUS_TEXT}\nError: {str(e)}",
+            reply_markup=query.message.reply_markup,
         )
 
 
-# Add this to the function that sends the invoice to the admin
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     text = update.effective_message.text
+    chat_id = update.effective_chat.id
     photo = update.message.photo
-
+    print(text)
     if photo:
         admin_chat_id = ADMIN_CHAT_ID
 
@@ -374,12 +416,12 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             file_id = photo[-1].file_id
 
-            invoice_text = f"""**Invoice**
+            invoice_text = f"""**فاکتور**
 
-Title: {invoice_details.get('title', 'N/A')}
-Description: {invoice_details.get('description', 'N/A')}
-Price: {invoice_details.get('price', 'N/A')} ت
-Invoice ID: {invoice_id}"""
+درخواست : {invoice_details.get('title', 'N/A')}
+یوزر نیم : {invoice_details.get('description', 'N/A')}
+قیمت : {invoice_details.get('price', 'N/A')} ت
+شماره فاکتور : {invoice_id}"""
 
             inline_keyboard = [
                 [
@@ -403,12 +445,10 @@ Invoice ID: {invoice_id}"""
             )
 
         except Exception as e:
-            print(ERROR_SENDING_PHOTO)
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=ERROR_SENDING_PHOTO,
             )
-            print(e)
 
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):

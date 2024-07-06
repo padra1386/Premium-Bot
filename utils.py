@@ -1,3 +1,6 @@
+import re
+
+
 def push_menu(context, menu_function):
     if "menu_stack" not in context.user_data:
         context.user_data["menu_stack"] = []
@@ -10,3 +13,12 @@ async def go_back(update, context):
         await menu_function(update, context)
     else:
         await start(update, context)
+
+
+def is_valid_username(text):
+    pattern = r"^[A-Za-z0-9_]{5,32}$"
+
+    if re.match(pattern, text):
+        return True
+    else:
+        return False
