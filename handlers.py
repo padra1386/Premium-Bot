@@ -17,7 +17,13 @@ from utils import (
     gregorian_to_solar,
 )
 import requests
-from currencyapi import three_m_price, six_m_price, twelve_m_price, last_price
+from currencyapi import (
+    three_m_price,
+    six_m_price,
+    twelve_m_price,
+    last_price,
+    insert_data,
+)
 from texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,

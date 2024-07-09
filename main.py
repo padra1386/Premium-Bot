@@ -41,6 +41,7 @@ from texts import (
 )
 from dbconn import conn, cur
 from redis_connection import redis_conn
+from currencyapi import insert_data
 
 
 async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):

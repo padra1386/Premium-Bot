@@ -33,6 +33,13 @@ def insert_data():
         conn.commit()
 
 
+def main():
+    insert_data()
+
+
+if __name__ == "__main__":
+    main()
+
 cur.execute(
     """SELECT service_name, price, fee, profit
     FROM services
