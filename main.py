@@ -22,6 +22,10 @@ from handlers import (
     handle_text_message,
     handle_sub_choice,
     add_user,
+    admin_panel,
+    show_users,
+    toggle_user_status,
+    cancelled_handle_back_button,
 )
 from texts import (
     THREE_M_SUB_TEXT,
@@ -33,9 +37,10 @@ from texts import (
     MY_PURCHASES_TEXT,
     GO_BACK_TEXT,
     START_TEXT,
+    ADMIN_PANEL_TEXT,
 )
 from dbconn import conn, cur
-from ridi import redis_conn
+from redis_connection import redis_conn
 
 
 async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -69,6 +74,7 @@ def main():
         filters.TEXT & filters.Regex(f"^{FAQ_TEXT}$"),
         faq,
     )
+
     my_subs_handler = MessageHandler(
         filters.TEXT & filters.Regex(f"^{MY_PURCHASES_TEXT}$"),
         my_subs,
@@ -83,12 +89,28 @@ def main():
         filters.TEXT & ~filters.COMMAND, handle_text_message
     )
     sub_choice_handler = CallbackQueryHandler(handle_sub_choice, pattern=r"^sub:\d+m")
+    admin_panel_handler = MessageHandler(
+        filters.TEXT & filters.Regex(f"^{ADMIN_PANEL_TEXT}$"),
+        admin_panel,
+    )
+    show_users_handler = MessageHandler(
+        filters.TEXT & filters.Regex("^کاربر ها$"), show_users
+    )
+    toggle_status_handler = MessageHandler(
+        filters.TEXT & filters.Regex("^ID: \d+$"), toggle_user_status
+    )
+    inline_keyboard_go_back_handler = CallbackQueryHandler(
+        cancelled_handle_back_button, pattern="^go_back$"
+    )
 
     app.add_handler(TypeHandler(Update, process_update), group=-1)
 
     app.add_handlers(
         [
             start_handler,
+            admin_panel_handler,
+            show_users_handler,
+            toggle_status_handler,
             buy_sub_handler,
             subs_list_handler,
             buy_self_handler,
@@ -99,6 +121,7 @@ def main():
             status_handler,
             handle_text_message_handler,
             sub_choice_handler,
+            inline_keyboard_go_back_handler,
         ]
     )
 

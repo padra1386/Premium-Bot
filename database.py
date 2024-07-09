@@ -19,12 +19,14 @@ def create_tables():
     cur = conn.cursor()
     cur.execute(
         """CREATE TABLE IF NOT EXISTS invoice (
-            invoice_id VARCHAR(50),
+            invoice_id VARCHAR(50) PRIMARY KEY,
             id TEXT,
             username VARCHAR(255),
             sub VARCHAR(255),
             created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status VARCHAR(50) DEFAULT NULL
+            status VARCHAR(50) DEFAULT NULL,
+            is_paid VARCHAR(50) DEFAULT 'false',
+            price VARCHAR(255)
         )"""
     )
     conn.commit()

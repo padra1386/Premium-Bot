@@ -7,6 +7,7 @@ from config import (
     PROFIT_AMOUNT,
 )
 from dbconn import conn, cur
+from utils import round_up_to_thousands
 
 response = requests.get("https://api.wallex.ir/v1/markets")
 data = response.json()
@@ -20,20 +21,40 @@ services_data = [
 ]
 
 
-def update_data():
+def insert_data():
     for service_name, price, fee, profit in services_data:
         cur.execute(
             """
-                UPDATE services
-                SET price = %s, fee = %s, profit = %s
-                WHERE service_name = %s
-                """,
-            (price, fee, profit, service_name),
+                INSERT INTO services (service_name, price, fee, profit) VALUES (%s, %s, %s, %s)
+            """,
+            (service_name, price, fee, profit),
         )
 
         conn.commit()
 
 
-three_month_price = 12
-six_month_price = 13
-twelve_month_price = 15
+cur.execute(
+    """SELECT service_name, price, fee, profit
+    FROM services
+    WHERE service_name IN ('three_m', 'nine_m', 'twelve_m');"""
+)
+data = cur.fetchall()
+three_m_price = three_m_fee = three_m_profit = None
+six_m_price = six_m_fee = six_m_profit = None
+twelve_m_price = twelve_m_fee = twelve_m_profit = None
+
+# Assign values to the respective variables
+for service in data:
+    service_name, price, fee, profit = service
+    if service_name == "three_m":
+        three_m_price = round_up_to_thousands(price * float(last_price))
+        three_m_fee = fee * float(last_price)
+        three_m_profit = profit * float(last_price)
+    elif service_name == "nine_m":
+        six_m_price = round_up_to_thousands(price * float(last_price))
+        six_m_fee = fee * float(last_price)
+        six_m_profit = profit * float(last_price)
+    elif service_name == "twelve_m":
+        twelve_m_price = round_up_to_thousands(price * float(last_price))
+        twelve_m_fee = fee * float(last_price)
+        twelve_m_profit = profit * float(last_price)

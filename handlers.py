@@ -8,14 +8,16 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 from database import get_db_connection
-from utils import push_menu, is_valid_username
-import requests
-from currencyapi import (
-    three_month_price,
-    six_month_price,
-    twelve_month_price,
-    update_data,
+from utils import (
+    push_menu,
+    is_valid_username,
+    round_up_to_thousands,
+    get_users,
+    toggle_user_status,
+    gregorian_to_solar,
 )
+import requests
+from currencyapi import three_m_price, six_m_price, twelve_m_price, last_price
 from texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,
@@ -23,6 +25,7 @@ from texts import (
     BUY_SUCCESS_TEXT,
     LOREM,
     FAQ_TEXT,
+    FAQ_FULL_TEXT,
     MY_PURCHASES_TEXT,
     GO_BACK_TEXT,
     THREE_M_SUB_TEXT,
@@ -43,11 +46,18 @@ from texts import (
     NO_SUB_TEXT,
     USERNAME_LIMITS_TEXT,
     STATUS_UPDATED_TEXT,
+    ITS_PAID_TEXT,
+    ADMIN_PANEL_TEXT,
+    cancelled_payment_text,
+    cancelled_username_text,
+    approved_payment,
+    approved,
 )
 from config import ADMIN_CHAT_ID
 import uuid
 from dbconn import conn, cur
-from ridi import redis_conn
+from redis_connection import redis_conn
+from utils import format_with_commas
 
 
 from session import set_session, get_session, delete_session
@@ -93,7 +103,6 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     push_menu(user_id, start)
-    update_data()
 
     start_keys = [
         [
@@ -104,6 +113,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             KeyboardButton(text=FAQ_TEXT),
         ],
     ]
+
+    if user_id == ADMIN_CHAT_ID:
+        start_keys.append([KeyboardButton(text=ADMIN_PANEL_TEXT)])
+
     markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
 
     await context.bot.send_message(
@@ -130,18 +143,24 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     text = update.message.text
+    user_data = update.effective_user
 
     if get_session(user_id, "awaiting_username") == "true":
         if text == BUY_FOR_SELF_TEXT:
-            user_data = update.effective_user
-            username = user_data.username
-            set_session(user_id, "entered_username", username)
-            delete_session(user_id, "awaiting_username")
-            await subs_list(update, context)  # Proceed to the subscription list
+            if not user_data.username:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=CHOOSE_USERNAME_ERROR_TEXT,
+                )
+            else:
+                username = user_data.username
+                set_session(user_id, "entered_username", username)
+                set_session(user_id, "awaiting_username", "false")
+                await subs_list(update, context)  # Proceed to the subscription list
         else:
             if is_valid_username(text):
                 set_session(user_id, "entered_username", text)
-                delete_session(user_id, "awaiting_username")
+                set_session(user_id, "awaiting_username", "false")
                 await subs_list(update, context)  # Proceed to the subscription list
             else:
                 await context.bot.send_message(
@@ -183,13 +202,13 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "sub:3m":
         set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
-        set_session(user_id, "sub_price", str(three_month_price))  # Store as string
+        set_session(user_id, "sub_price", str(three_m_price))  # Store as string
     elif data == "sub:6m":
         set_session(user_id, "sub_choice", SIX_M_SUB_TEXT)
-        set_session(user_id, "sub_price", str(six_month_price))  # Store as string
+        set_session(user_id, "sub_price", str(six_m_price))  # Store as string
     elif data == "sub:12m":
         set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
-        set_session(user_id, "sub_price", str(twelve_month_price))  # Store as string
+        set_session(user_id, "sub_price", str(twelve_m_price))  # Store as string
     else:
         await query.edit_message_text(text=INVALID_OPTION_TEXT)
         return
@@ -232,7 +251,7 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     set_session(user_id, "invoice_details", json.dumps(invoice_details))
-
+    formatted_price = format_with_commas(int(invoice_price))
     # Send the invoice or next steps here
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
@@ -240,9 +259,9 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     💢 درخواست: {invoice_title} 
 
-    🛍 مبلغ فاکتور: {invoice_price} تومان
+    🛍 مبلغ فاکتور: {formatted_price} تومان
 
-    ✅ قابل پرداخت: {invoice_price} تومان
+    ✅ قابل پرداخت: {formatted_price} تومان
     🔸 شماره کارت: 
     12345678998765432
 
@@ -276,9 +295,12 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data.split(":")
-
     invoice_id = data[1]
     new_status = data[2]
+    ex_btn = None
+    if new_status == "Canceled":
+        ex_btn = data[3]
+        print(ex_btn)
 
     if new_status == "Pending Approval":
         persian_new_status = PENDING_APPROVAL_TEXT
@@ -293,7 +315,6 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Fetch the invoice to check if it exists
         cur.execute("SELECT id, sub FROM invoice WHERE invoice_id = %s", (invoice_id,))
         result = cur.fetchall()
-        print(result)
         user_chat_id, sub_name = result[0]
 
         if result:
@@ -316,6 +337,11 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Define the inline keyboard based on the new status
             inline_keyboard = []
             if new_status == "Pending Approval":
+                cur.execute(
+                    "UPDATE invoice SET is_paid = %s WHERE invoice_id = %s",
+                    ("true", invoice_id),
+                )
+                conn.commit()
                 inline_keyboard = [
                     [
                         InlineKeyboardButton(
@@ -324,10 +350,14 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         ),
                         InlineKeyboardButton(
                             text=CANCELLED_TEXT,
-                            callback_data=f"status:{invoice_id}:Canceled",
+                            callback_data=f"status:{invoice_id}:Canceled:ex_Reviewing",
                         ),
                     ]
                 ]
+                await context.bot.send_message(
+                    chat_id=user_chat_id,
+                    text=approved_payment(sub_name),
+                )
             elif new_status == "Reviewing":
                 inline_keyboard = [
                     [
@@ -337,25 +367,55 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         ),
                         InlineKeyboardButton(
                             text=CANCELLED_TEXT,
-                            callback_data=f"status:{invoice_id}:Canceled",
+                            callback_data=f"status:{invoice_id}:Canceled:ex_Approved",
                         ),
                     ]
                 ]
             elif new_status == "Approved":
                 await context.bot.send_message(
                     chat_id=user_chat_id,
-                    text=f"مشتری گرامی درخواست '{sub_name}' شما تایید شد",
+                    text=approved(sub_name),
                 )
                 delete_session(user_chat_id, "invoice_details")
                 inline_keyboard = []
-            elif new_status == "Canceled":
+            elif new_status == "Canceled" and ex_btn == "ex_Reviewing":
+                in_keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            text=ADMIN_PANEL_TEXT,
+                            url="https://t.me/padraahani1386",
+                        ),
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text=GO_BACK_TEXT, callback_data="go_back"
+                        ),
+                    ],
+                ]
+                reply_markup = InlineKeyboardMarkup(in_keyboard)
                 await context.bot.send_message(
                     chat_id=user_chat_id,
-                    text=f"مشتری گرامی درخواست '{sub_name}' شما لغو شد",
+                    text=cancelled_username_text(sub_name=sub_name),
+                    reply_markup=reply_markup,
                 )
                 delete_session(user_chat_id, "invoice_details")
-
-                inline_keyboard = []
+            elif new_status == "Canceled" and ex_btn == "ex_PendingApproval":
+                in_keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            text="ادمین",
+                            url="https://t.me/padraahani1386",
+                        ),
+                    ],
+                    [InlineKeyboardButton(text=GO_BACK_TEXT, callback_data="go_back")],
+                ]
+                reply_markup = InlineKeyboardMarkup(in_keyboard)
+                await context.bot.send_message(
+                    chat_id=user_chat_id,
+                    text=cancelled_payment_text(sub_name=sub_name),
+                    reply_markup=reply_markup,
+                )
+                delete_session(user_chat_id, "invoice_details")
 
             reply_markup = (
                 InlineKeyboardMarkup(inline_keyboard) if inline_keyboard else None
@@ -377,12 +437,19 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def cancelled_handle_back_button(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+    await start(update, context)
+
+
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     text = update.effective_message.text
     chat_id = update.effective_chat.id
     photo = update.message.photo
-    print(text)
     if photo:
         admin_chat_id = ADMIN_CHAT_ID
 
@@ -394,17 +461,19 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Deserialize the invoice details
             invoice_details = json.loads(invoice_details_str)
 
-            invoice_id = str(uuid.uuid4())[:8]  # Generate a random invoice_id
+            invoice_id = str(uuid.uuid4())[:8]
 
             user_data = update.message.from_user
             user_id = user_data.id
             user_username = user_data.username
             user_sub = invoice_details.get("title", "N/A")
+            sub_price = invoice_details.get("price", "N/A")
+            print(sub_price)
 
             if user_username:
                 cur.execute(
-                    "INSERT INTO invoice (id, username, sub, status, invoice_id) VALUES (%s, %s, %s, NULL, %s)",
-                    (user_id, user_username, user_sub, invoice_id),
+                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price) VALUES (%s, %s, %s, NULL, %s, %s)",
+                    (user_id, user_username, user_sub, invoice_id, str(sub_price)),
                 )
                 conn.commit()
             else:
@@ -415,12 +484,23 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
             file_id = photo[-1].file_id
-
+            # cur.execute(
+            #     "SELECT first_name, last_name FROM users WHERE id = %s", user_id
+            # )
+            # user_data = cur.fetchall()
+            user_data = update.message.from_user
+            first_name = user_data["first_name"]
+            last_name = user_data["last_name"]
             invoice_text = f"""**فاکتور**
 
 درخواست : {invoice_details.get('title', 'N/A')}
-یوزر نیم : {invoice_details.get('description', 'N/A')}
-قیمت : {invoice_details.get('price', 'N/A')} ت
+نام : {first_name}
+نام خانوادگی : {last_name}
+ایدی کاربر : {user_id}
+یوزر نیم اصلی : @{user_username}
+یوزر نیم وارد شده : {invoice_details.get('description', 'N/A')}
+قیمت تتر : {int(float(last_price))}
+قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
 شماره فاکتور : {invoice_id}"""
 
             inline_keyboard = [
@@ -431,7 +511,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ),
                     InlineKeyboardButton(
                         text=CANCELLED_TEXT,
-                        callback_data=f"status:{invoice_id}:Canceled",
+                        callback_data=f"status:{invoice_id}:Canceled:ex_PendingApproval",
                     ),
                 ]
             ]
@@ -447,7 +527,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=ERROR_SENDING_PHOTO,
+                text=e,
             )
 
 
@@ -463,7 +543,7 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = ReplyKeyboardMarkup(faq_keys, resize_keyboard=True)
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=LOREM, reply_markup=markup
+        chat_id=update.effective_chat.id, text=FAQ_FULL_TEXT, reply_markup=markup
     )
 
 
@@ -482,21 +562,27 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_data:
         status_translation = {
-            "Pending Approval": PENDING_APPROVAL_TEXT,
-            "Reviewing": REVIEWING_TEXT,
-            "Approved": APPROVED_TEXT,
-            "Canceled": CANCELLED_TEXT,
-            None: UNKNOWN_TEXT,
+            "Pending Approval": "در انتظار تأیید",
+            "Reviewing": "در حال بررسی",
+            "Approved": "تأیید شده",
+            "Canceled": "لغو شده",
+            None: "نامشخص",
         }
         subs_list = "\n".join(
             [
-                f"- @{username}: {sub} Premium (Created on: {created.strftime('%Y-%m-%d %H:%M:%S')}) - Status: {status_translation.get(status, UNKNOWN_TEXT)}"
+                f"""
+💢 درخواست: {sub}
+👤 برای یوزر نیم : @{username}
+📅 ساخته شده : {gregorian_to_solar(created)}
+⭐️ وضعیت : {status_translation.get(status, 'نامشخص')}
+                """
+                # f"- @{username}: اشتراک {sub} (تاریخ ایجاد: {created.strftime('%Y-%m-%d %H:%M:%S')}) - وضعیت: {status_translation.get(status, 'نامشخص')}"
                 for username, sub, created, status in user_data
             ]
         )
         response_message = f"اشتراک‌های شما:\n{subs_list}"
     else:
-        response_message = NO_SUB_TEXT
+        response_message = "شما هیچ اشتراکی ندارید."
 
     my_subs_keys = [
         [
@@ -508,3 +594,52 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=update.effective_chat.id, text=response_message, reply_markup=markup
     )
+
+
+# Admin handler only
+
+
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    admin_keys = [
+        [
+            KeyboardButton(text="کاربر ها"),
+        ],
+    ]
+
+    markup = ReplyKeyboardMarkup(admin_keys, resize_keyboard=True)
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID, text=WELCOME_TEXT, reply_markup=markup
+    )
+
+
+async def admin_users_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    admin_keys = [
+        [
+            KeyboardButton(text="کاربر ها"),
+        ],
+    ]
+
+    markup = ReplyKeyboardMarkup(admin_keys, resize_keyboard=True)
+    await context.bot.send_message(
+        chat_id=ADMIN_CHAT_ID, text=WELCOME_TEXT, reply_markup=markup
+    )
+
+
+async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    users = get_users()
+
+    user_list_message = "Users and their statuses:\n"
+    for user in users:
+        user_list_message += f"ID: {user[0]}, Username: {user[1]}, Status: {user[2]}\n"
+
+    user_list_message += "\nClick on a user ID to toggle their status."
+
+    await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=user_list_message)
+
+
+async def toggle_user_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = int(update.message.text.split()[-1])
+    toggle_user_status(user_id)
+    await update.message.reply_text(f"User ID {user_id} status has been toggled.")
