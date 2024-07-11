@@ -23,9 +23,8 @@ from handlers import (
     handle_sub_choice,
     add_user,
     admin_panel,
-    show_users,
-    toggle_user_status,
     cancelled_handle_back_button,
+    handle_states
 )
 from texts import (
     THREE_M_SUB_TEXT,
@@ -40,8 +39,6 @@ from texts import (
     ADMIN_PANEL_TEXT,
 )
 from dbconn import conn, cur
-from redis_connection import redis_conn
-from currencyapi import insert_data
 
 
 async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -94,33 +91,28 @@ def main():
         filters.TEXT & filters.Regex(f"^{ADMIN_PANEL_TEXT}$"),
         admin_panel,
     )
-    show_users_handler = MessageHandler(
-        filters.TEXT & filters.Regex("^کاربر ها$"), show_users
-    )
-    toggle_status_handler = MessageHandler(
-        filters.TEXT & filters.Regex("^ID: \d+$"), toggle_user_status
-    )
     inline_keyboard_go_back_handler = CallbackQueryHandler(
         cancelled_handle_back_button, pattern="^go_back$"
     )
-
+    handle_states_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_states)
     app.add_handler(TypeHandler(Update, process_update), group=-1)
 
     app.add_handlers(
         [
+            handle_states_handler,
             start_handler,
-            admin_panel_handler,
-            show_users_handler,
-            toggle_status_handler,
-            buy_sub_handler,
-            subs_list_handler,
-            buy_self_handler,
+            # admin_panel_handler,
+            # show_users_handler,
+            # toggle_status_handler,
+            # buy_sub_handler,
+            # subs_list_handler,
+            # buy_self_handler,
             buy_success_handler,
-            faq_handler,
-            my_subs_handler,
+            # faq_handler,
+            # my_subs_handler,
             go_back_handler,
             status_handler,
-            handle_text_message_handler,
+            # handle_text_message_handler,
             sub_choice_handler,
             inline_keyboard_go_back_handler,
         ]

@@ -4,6 +4,8 @@ from dbconn import conn, cur
 from datetime import datetime
 import pytz
 from convertdate import persian
+from telegram import  ReplyKeyboardRemove
+from telegram.ext import  ContextTypes
 
 
 def push_menu(context, menu_function):
@@ -71,3 +73,9 @@ def gregorian_to_solar(gregorian_date):
     solar_date_str = f"{solar_date[0]:04d}-{solar_date[1]:02d}-{solar_date[2]:02d}"
 
     return solar_date_str
+
+
+def send_reply(context: ContextTypes.DEFAULT_TYPE, chat_id, reply_text):
+    reply_keyboard_remove = ReplyKeyboardRemove()
+    markup = reply_keyboard_remove
+    context.bot.send_message(chat_id, reply_text, markup)

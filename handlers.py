@@ -5,31 +5,25 @@ from telegram import (
     ReplyKeyboardMarkup,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardRemove,
 )
 from telegram.ext import ContextTypes
-from database import get_db_connection
 from utils import (
     push_menu,
     is_valid_username,
-    round_up_to_thousands,
     get_users,
     toggle_user_status,
     gregorian_to_solar,
 )
-import requests
 from currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
     last_price,
-    insert_data,
 )
 from texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,
-    BUY_FOR_FRIENDS_TEXT,
-    BUY_SUCCESS_TEXT,
-    LOREM,
     FAQ_TEXT,
     FAQ_FULL_TEXT,
     MY_PURCHASES_TEXT,
@@ -47,12 +41,8 @@ from texts import (
     CHOOSE_OPTION_TEXT,
     INVALID_OPTION_TEXT,
     FAILED_UPDATE_STATUS_TEXT,
-    ERROR_SENDING_PHOTO,
-    UNKNOWN_TEXT,
-    NO_SUB_TEXT,
     USERNAME_LIMITS_TEXT,
     STATUS_UPDATED_TEXT,
-    ITS_PAID_TEXT,
     ADMIN_PANEL_TEXT,
     cancelled_payment_text,
     cancelled_username_text,
@@ -63,9 +53,8 @@ from config import ADMIN_CHAT_ID
 import uuid
 from dbconn import conn, cur
 from redis_connection import redis_conn
-from utils import format_with_commas
-
-
+from utils import format_with_commas, send_reply
+from states import set_user_state, get_user_state, BotState
 from session import set_session, get_session, delete_session
 
 
@@ -109,6 +98,7 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     push_menu(user_id, start)
+    set_user_state(user_id, BotState.START)
 
     start_keys = [
         [
@@ -138,49 +128,69 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     markup = ReplyKeyboardMarkup(buy_keys, resize_keyboard=True, one_time_keyboard=True)
 
-    await context.bot.send_message(
+    message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=SUB_HELP_TEXT,
         reply_markup=markup,
     )
     set_session(user_id, "awaiting_username", "true")
+    set_session(user_id, "last_message", message.message_id)
 
 
 async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
+    user_id = update.message.from_user.id
     text = update.message.text
     user_data = update.effective_user
+    user_state = get_user_state(user_id)
+    last_message_id = get_session(user_id, "last_message")
+    if user_state == BotState.BUY_PREMIUM:
+        if get_session(user_id, "awaiting_username") == "true":
+            if text == BUY_FOR_SELF_TEXT:
+                if not user_data.username:
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=CHOOSE_USERNAME_ERROR_TEXT,
+                    )
+                else:
+                    username = user_data.username
+                    set_session(user_id, "entered_username", username)
+                    set_session(user_id, "awaiting_username", "false")
+                    set_user_state(user_id, BotState.SUBS_LIST)
 
-    if get_session(user_id, "awaiting_username") == "true":
-        if text == BUY_FOR_SELF_TEXT:
-            if not user_data.username:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=CHOOSE_USERNAME_ERROR_TEXT,
-                )
+                    # Remove the keyboard
+                    await context.bot.delete_message(
+                        chat_id=update.effective_chat.id,
+                        message_id=int(last_message_id),
+                    )
+                    await subs_list(update, context)
             else:
-                username = user_data.username
-                set_session(user_id, "entered_username", username)
-                set_session(user_id, "awaiting_username", "false")
-                await subs_list(update, context)  # Proceed to the subscription list
+                if is_valid_username(text):
+                    set_session(user_id, "entered_username", text)
+                    set_session(user_id, "awaiting_username", "false")
+                    set_user_state(user_id, BotState.SUBS_LIST)
+
+                    # Remove the keyboard
+                    await context.bot.delete_message(
+                        chat_id=update.effective_chat.id,
+                        message_id=int(last_message_id),
+                    )
+
+                    await subs_list(update, context)  # Proceed to the subscription list
+                else:
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text=USERNAME_LIMITS_TEXT,
+                    )
         else:
-            if is_valid_username(text):
-                set_session(user_id, "entered_username", text)
-                set_session(user_id, "awaiting_username", "false")
-                await subs_list(update, context)  # Proceed to the subscription list
-            else:
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
-                    text=USERNAME_LIMITS_TEXT,
-                )
+            # Handle other text messages here
+            pass
     else:
-        # Handle other text messages here
-        pass
-
+        await start(update, context)
 
 async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     push_menu(user_id, buy_sub)
+    user_state = get_user_state(user_id)
 
     subs_list_keys = [
         [
@@ -194,10 +204,8 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
     ]
     markup = InlineKeyboardMarkup(subs_list_keys)
-
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup
-    )
+        chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup)
 
 
 async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -206,76 +214,87 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
 
-    if data == "sub:3m":
-        set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
-        set_session(user_id, "sub_price", str(three_m_price))  # Store as string
-    elif data == "sub:6m":
-        set_session(user_id, "sub_choice", SIX_M_SUB_TEXT)
-        set_session(user_id, "sub_price", str(six_m_price))  # Store as string
-    elif data == "sub:12m":
-        set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
-        set_session(user_id, "sub_price", str(twelve_m_price))  # Store as string
+    if get_user_state(user_id) == BotState.SUBS_LIST:
+        if data == "sub:3m":
+            set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
+            set_session(user_id, "sub_price", str(three_m_price))  # Store as string
+        elif data == "sub:6m":
+            set_session(user_id, "sub_choice", SIX_M_SUB_TEXT)
+            set_session(user_id, "sub_price", str(six_m_price))  # Store as string
+        elif data == "sub:12m":
+            set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
+            set_session(user_id, "sub_price", str(twelve_m_price))  # Store as string
+        else:
+            await query.edit_message_text(text=INVALID_OPTION_TEXT)
+            return
+        set_user_state(user_id, BotState.INVOICE_LIST)
+        # Delete the original subs_list message after state change
+        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=query.message.message_id)
+        await buy_for_self(update, context)
     else:
-        await query.edit_message_text(text=INVALID_OPTION_TEXT)
-        return
-
-    await buy_for_self(update, context)
+        await start(update, context)
 
 
 async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
+    user_state = get_user_state(user_id)
     push_menu(user_id, subs_list)
 
-    user_data = (
-        update.callback_query.from_user
-        if update.callback_query
-        else update.message.from_user
-    )
+    if user_state == BotState.INVOICE_LIST:
 
-    invoice_title = get_session(user_id, "sub_choice")
-    invoice_price = get_session(user_id, "sub_price")
+        user_data = (
+            update.callback_query.from_user
+            if update.callback_query
+            else update.message.from_user
+        )
 
-    if not invoice_title or not invoice_price:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="خطا")
-        return
+        invoice_title = get_session(user_id, "sub_choice")
+        invoice_price = get_session(user_id, "sub_price")
 
-    # Check if the username was entered earlier; if not, use the Telegram username
-    username = get_session(user_id, "entered_username")
-    if not username:
-        username = user_data.username
+        if not invoice_title or not invoice_price:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="خطا")
+            return
+
+        # Check if the username was entered earlier; if not, use the Telegram username
+        username = get_session(user_id, "entered_username")
+        if not username:
+            username = user_data.username
+        else:
+            # Clear the custom username after using it
+            delete_session(user_id, "entered_username")
+
+        invoice_username = f"@{username}"
+
+        # Process the invoice creation
+        invoice_details = {
+            "title": invoice_title,
+            "description": invoice_username,
+            "price": invoice_price,
+        }
+
+        set_session(user_id, "invoice_details", json.dumps(invoice_details))
+        formatted_price = format_with_commas(int(invoice_price))
+        # Send the invoice or next steps here
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"""🧾 فاکتور شما ایجاد شد. 
+
+💢 درخواست:{invoice_title} 
+
+🛍 مبلغ فاکتور:{formatted_price} تومان
+
+✅ قابل پرداخت:{formatted_price} تومان
+
+🔸 شماره کارت:
+
+12345678998765432
+
+👤 برای یوزر نیم :{invoice_username}
+
+📌 لطفا اسکرین شات واریزی را برای ربات ارسال نمایید""",
+        )
     else:
-        # Clear the custom username after using it
-        delete_session(user_id, "entered_username")
-
-    invoice_username = f"@{username}"
-
-    # Process the invoice creation
-    invoice_details = {
-        "title": invoice_title,
-        "description": invoice_username,
-        "price": invoice_price,
-    }
-
-    set_session(user_id, "invoice_details", json.dumps(invoice_details))
-    formatted_price = format_with_commas(int(invoice_price))
-    # Send the invoice or next steps here
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"""🧾 فاکتور شما ایجاد شد. 
-
-    💢 درخواست: {invoice_title} 
-
-    🛍 مبلغ فاکتور: {formatted_price} تومان
-
-    ✅ قابل پرداخت: {formatted_price} تومان
-    🔸 شماره کارت: 
-    12345678998765432
-
-    برای یوزر نیم : {invoice_username}
-
-
-    📌 لطفا اسکرین شات واریزی را برای ربات ارسال نمایید""",
-    )
+        await start(update, context)
 
 
 # async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -444,7 +463,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cancelled_handle_back_button(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
+        update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
     await query.answer()
@@ -456,7 +475,9 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.effective_message.text
     chat_id = update.effective_chat.id
     photo = update.message.photo
-    if photo:
+    user_state = get_user_state(user_id)
+
+    if photo and user_state == BotState.INVOICE_LIST:
         admin_chat_id = ADMIN_CHAT_ID
 
         try:
@@ -478,7 +499,8 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if user_username:
                 cur.execute(
-                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price) VALUES (%s, %s, %s, NULL, %s, %s)",
+                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price) VALUES (%s, %s, %s, NULL, %s, "
+                    "%s)",
                     (user_id, user_username, user_sub, invoice_id, str(sub_price)),
                 )
                 conn.commit()
@@ -529,6 +551,10 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 caption=invoice_text,
                 reply_markup=reply_markup,
             )
+
+            await context.bot.send_message(chat_id=chat_id, text="عکس واریزی شما با موفقیت برای ادمین ما ارسال شد")
+            set_user_state(user_id, BotState.START)
+            await start(update, context)
 
         except Exception as e:
             await context.bot.send_message(
@@ -619,33 +645,33 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def admin_users_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    admin_keys = [
-        [
-            KeyboardButton(text="کاربر ها"),
-        ],
-    ]
+async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    chat_id = update.effective_chat.id
+    user_state = get_user_state(user_id)
+    text = update.message.text
 
-    markup = ReplyKeyboardMarkup(admin_keys, resize_keyboard=True)
-    await context.bot.send_message(
-        chat_id=ADMIN_CHAT_ID, text=WELCOME_TEXT, reply_markup=markup
-    )
-
-
-async def show_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    users = get_users()
-
-    user_list_message = "Users and their statuses:\n"
-    for user in users:
-        user_list_message += f"ID: {user[0]}, Username: {user[1]}, Status: {user[2]}\n"
-
-    user_list_message += "\nClick on a user ID to toggle their status."
-
-    await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=user_list_message)
-
-
-async def toggle_user_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = int(update.message.text.split()[-1])
-    toggle_user_status(user_id)
-    await update.message.reply_text(f"User ID {user_id} status has been toggled.")
+    if user_state == BotState.START:
+        if text == BUY_PREMIUM_TEXT:
+            set_user_state(user_id, BotState.BUY_PREMIUM)
+            await buy_sub(update, context)
+            # Call appropriate handler
+        elif text == MY_PURCHASES_TEXT:
+            set_user_state(user_id, BotState.MY_SUBS_LIST)
+            await my_subs(update, context)
+        elif text == FAQ_TEXT:
+            set_user_state(user_id, BotState.FAQ)
+            await faq(update, context)
+        elif text == ADMIN_PANEL_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
+        else:
+            await start(update, context)
+    elif user_state == BotState.BUY_PREMIUM:
+        await handle_text_message(update, context)
+    elif user_state == BotState.FAQ:
+        if text:
+            await start(update, context)
+    elif user_state == BotState.MY_SUBS_LIST:
+        if text == GO_BACK_TEXT:
+            await start(update, context)
