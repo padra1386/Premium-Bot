@@ -1,13 +1,13 @@
 import requests
-from config import (
+from config.config import (
     THREE_M_USD_PRICE,
     NINE_M_USD_PRICE,
     TWELVE_M_USD_PRICE,
     FEE_AMOUNT,
     PROFIT_AMOUNT,
 )
-from dbconn import conn, cur
-from utils import round_up_to_thousands
+from db.dbconn import conn, cur
+from utilitys.utils import round_up_to_thousands
 
 response = requests.get("https://api.wallex.ir/v1/markets")
 data = response.json()

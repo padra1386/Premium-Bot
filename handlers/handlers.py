@@ -5,29 +5,25 @@ from telegram import (
     ReplyKeyboardMarkup,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    ReplyKeyboardRemove,
 )
 from telegram.ext import ContextTypes
-from utils import (
+from utils.utils import (
     push_menu,
     is_valid_username,
-    get_users,
-    toggle_user_status,
     gregorian_to_solar,
     get_total_users,
     get_daily_new_users,
     get_weekly_new_users,
     format_with_commas,
-    send_reply,
     get_user_purchased
 )
-from currencyapi import (
+from utils.currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
     last_price,
 )
-from texts import (
+from utils.texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,
     FAQ_TEXT,
@@ -58,10 +54,10 @@ from texts import (
 )
 from config import ADMIN_CHAT_ID
 import uuid
-from dbconn import conn, cur
-from redis_connection import redis_conn
-from states import set_user_state, get_user_state, BotState
-from session import set_session, get_session, delete_session
+from database.dbconn import conn, cur
+from redis_conn.redis_connection import redis_conn
+from redis_conn.states import set_user_state, get_user_state, BotState
+from redis_conn.session import set_session, get_session, delete_session
 
 
 def push_menu(user_id: str, menu_function):
