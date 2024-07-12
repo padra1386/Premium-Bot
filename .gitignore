@@ -1,4 +1,4 @@
 venv
 config/.env
 .idea
-__pyache__
+__pycache__
