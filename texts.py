@@ -57,6 +57,7 @@ USERNAME_LIMITS_TEXT = "⚠️ لطفا یوزر نیم را به درستی و�
 STATUS_UPDATED_TEXT = "وضعیت تغییر کرد به : "
 ITS_PAID_TEXT = "✅ مشتری گرامی تراکنش شما تایید شد"
 ADMIN_PANEL_TEXT = "👤  ادمین"
+USERS_STATS = "📊 آمار کاربران"
 
 
 def cancelled_username_text(sub_name):

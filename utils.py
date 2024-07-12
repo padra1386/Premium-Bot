@@ -79,3 +79,37 @@ def send_reply(context: ContextTypes.DEFAULT_TYPE, chat_id, reply_text):
     reply_keyboard_remove = ReplyKeyboardRemove()
     markup = reply_keyboard_remove
     context.bot.send_message(chat_id, reply_text, markup)
+
+
+# Function to get the total number of users
+def get_total_users():
+    cur.execute('SELECT COUNT(*) FROM users')
+    return cur.fetchone()[0]
+
+# Function to get the number of new users today
+def get_daily_new_users():
+    cur.execute('''
+    SELECT COUNT(*)
+    FROM users
+    WHERE DATE(created) = CURRENT_DATE
+    ''')
+    return cur.fetchone()[0]
+
+# Function to get the number of new users this week
+def get_weekly_new_users():
+    cur.execute('''
+    SELECT COUNT(*)
+    FROM users
+    WHERE DATE(created) >= CURRENT_DATE - INTERVAL '7 days'
+    ''')
+    return cur.fetchone()[0]
+
+
+def get_user_purchased():
+    cur.execute("""
+    SELECT COUNT(DISTINCT u.id) 
+    FROM users u
+    JOIN invoice i ON u.id = i.id
+    WHERE i.is_paid = 'true';
+    """)
+    return cur.fetchone()[0]

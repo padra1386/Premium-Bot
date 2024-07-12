@@ -14,6 +14,12 @@ from utils import (
     get_users,
     toggle_user_status,
     gregorian_to_solar,
+    get_total_users,
+    get_daily_new_users,
+    get_weekly_new_users,
+    format_with_commas,
+    send_reply,
+    get_user_purchased
 )
 from currencyapi import (
     three_m_price,
@@ -48,12 +54,12 @@ from texts import (
     cancelled_username_text,
     approved_payment,
     approved,
+    USERS_STATS
 )
 from config import ADMIN_CHAT_ID
 import uuid
 from dbconn import conn, cur
 from redis_connection import redis_conn
-from utils import format_with_commas, send_reply
 from states import set_user_state, get_user_state, BotState
 from session import set_session, get_session, delete_session
 
@@ -186,6 +192,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             pass
     else:
         await start(update, context)
+
 
 async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
@@ -635,7 +642,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     admin_keys = [
         [
-            KeyboardButton(text="کاربر ها"),
+            KeyboardButton(text=USERS_STATS),
         ],
     ]
 
@@ -643,6 +650,32 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=ADMIN_CHAT_ID, text=WELCOME_TEXT, reply_markup=markup
     )
+
+
+async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    total_users = get_total_users()
+    daily_new_users = get_daily_new_users()
+    weekly_new_users = get_weekly_new_users()
+    user_w_paid_invoice = get_user_purchased()
+    print(total_users)
+    print(daily_new_users)
+    print(weekly_new_users)
+    print(user_w_paid_invoice)
+
+    message_text = f"""
+📊 آمار کاربران
+
+تعداد کل کاربران : {total_users}
+
+تعداد کاربران جدید امروز : {daily_new_users}
+
+تعداد کاربران جدید این هفته : {weekly_new_users}
+
+تعداد کاربرانی که حداقل یک خرید انجام دادند : {user_w_paid_invoice} 
+
+"""
+
+    await context.bot.send_message(update.effective_chat.id, message_text)
 
 
 async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -675,3 +708,10 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif user_state == BotState.MY_SUBS_LIST:
         if text == GO_BACK_TEXT:
             await start(update, context)
+    elif user_state == BotState.ADMIN_PANEL:
+        if text == USERS_STATS:
+            set_user_state(user_id, BotState.USERS_STATS)
+            await user_stats_handler(update, context)
+    elif user_state == BotState.USERS_STATS:
+        if text == USERS_STATS:
+            await user_stats_handler(update, context)
