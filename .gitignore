@@ -1,2 +1,4 @@
 venv
-.env
+config/.env
+.idea
+__pyache__

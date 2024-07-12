@@ -13,7 +13,7 @@ def get_db_connection():
     return conn
 
 
-# In database.py
+# In db.py
 def create_tables():
     conn = get_db_connection()
     cur = conn.cursor()

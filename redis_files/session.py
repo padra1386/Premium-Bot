@@ -1,4 +1,4 @@
-from redis_connection import redis_conn
+from redis_files.redis_connection import redis_conn
 
 
 SESSION_EXPIRATION = 86400

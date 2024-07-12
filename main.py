@@ -8,8 +8,8 @@ from telegram.ext import (
     TypeHandler,
     ContextTypes,
 )
-from config import TOKEN
-from handlers import (
+from config.config import TOKEN
+from handlers.handlers import (
     start,
     buy_sub,
     buy_for_self,
@@ -26,7 +26,7 @@ from handlers import (
     cancelled_handle_back_button,
     handle_states
 )
-from texts import (
+from utilities.texts import (
     THREE_M_SUB_TEXT,
     SIX_M_SUB_TEXT,
     TWELVE_M_SUB_TEXT,
@@ -38,7 +38,7 @@ from texts import (
     START_TEXT,
     ADMIN_PANEL_TEXT,
 )
-from dbconn import conn, cur
+from db.dbconn import conn, cur
 
 
 async def process_update(update: Update, context: ContextTypes.DEFAULT_TYPE):

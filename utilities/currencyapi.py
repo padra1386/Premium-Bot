@@ -7,7 +7,7 @@ from config.config import (
     PROFIT_AMOUNT,
 )
 from db.dbconn import conn, cur
-from utilitys.utils import round_up_to_thousands
+from utilities.utils import round_up_to_thousands
 
 response = requests.get("https://api.wallex.ir/v1/markets")
 data = response.json()

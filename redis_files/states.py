@@ -1,5 +1,5 @@
 from enum import Enum
-from redis_connection import redis_conn
+from redis_files.redis_connection import redis_conn
 
 
 class BotState(Enum):

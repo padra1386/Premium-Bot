@@ -7,7 +7,7 @@ from telegram import (
     InlineKeyboardMarkup,
 )
 from telegram.ext import ContextTypes
-from utils.utils import (
+from utilities.utils import (
     push_menu,
     is_valid_username,
     gregorian_to_solar,
@@ -17,13 +17,13 @@ from utils.utils import (
     format_with_commas,
     get_user_purchased
 )
-from utils.currencyapi import (
+from utilities.currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
     last_price,
 )
-from utils.texts import (
+from utilities.texts import (
     BUY_PREMIUM_TEXT,
     BUY_FOR_SELF_TEXT,
     FAQ_TEXT,
@@ -52,12 +52,12 @@ from utils.texts import (
     approved,
     USERS_STATS
 )
-from config import ADMIN_CHAT_ID
+from config.config import ADMIN_CHAT_ID
 import uuid
-from database.dbconn import conn, cur
-from redis_conn.redis_connection import redis_conn
-from redis_conn.states import set_user_state, get_user_state, BotState
-from redis_conn.session import set_session, get_session, delete_session
+from db.dbconn import conn, cur
+from redis_files.redis_connection import redis_conn
+from redis_files.states import set_user_state, get_user_state, BotState
+from redis_files.session import set_session, get_session, delete_session
 
 
 def push_menu(user_id: str, menu_function):
@@ -310,8 +310,8 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #         # Retrieve username from Telegram user data
 #         user_data = update.effective_user
 #         username = user_data.username
-#         redis_conn.set(f"entered_username:{user_id}", username)
-#         redis_conn.set(f"awaiting_username:{user_id}", "false")
+#         redis_files.set(f"entered_username:{user_id}", username)
+#         redis_files.set(f"awaiting_username:{user_id}", "false")
 #         await subs_list(update, context)  # Proceed to the subscription list
 #     elif data == "go_back":
 #         await go_back(update, context)
@@ -346,7 +346,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_chat_id, sub_name = result[0]
 
         if result:
-            # Update the status in the database
+            # Update the status in the db
             cur.execute(
                 "UPDATE invoice SET status = %s WHERE invoice_id = %s",
                 (new_status, invoice_id),
