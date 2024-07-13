@@ -1,11 +1,19 @@
 import requests
-from config.config import (
+
+import sys
+
+
+# caution: path[0] is reserved for script path (or '' in REPL)
+sys.path.insert(1, 'D:\Telegram bots\Premium Bot')
+
+from config import (
     THREE_M_USD_PRICE,
     NINE_M_USD_PRICE,
     TWELVE_M_USD_PRICE,
     FEE_AMOUNT,
     PROFIT_AMOUNT,
 )
+
 from db.dbconn import conn, cur
 from utilities.utils import round_up_to_thousands
 

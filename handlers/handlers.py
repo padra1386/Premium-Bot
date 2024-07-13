@@ -50,9 +50,10 @@ from utilities.texts import (
     cancelled_username_text,
     approved_payment,
     approved,
-    USERS_STATS
+    USERS_STATS,
+PHOTO_SENT_SUCCESSFULLY
 )
-from config.config import ADMIN_CHAT_ID
+from config import ADMIN_CHAT_ID
 import uuid
 from db.dbconn import conn, cur
 from redis_files.redis_connection import redis_conn
@@ -291,6 +292,7 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🔸 شماره کارت:
 
 12345678998765432
+به نام پادرا آهنی
 
 👤 برای یوزر نیم :{invoice_username}
 
@@ -555,7 +557,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup,
             )
 
-            await context.bot.send_message(chat_id=chat_id, text="عکس واریزی شما با موفقیت برای ادمین ما ارسال شد")
+            await context.bot.send_message(chat_id=chat_id, text=PHOTO_SENT_SUCCESSFULLY)
             set_user_state(user_id, BotState.START)
             await start(update, context)
 
@@ -567,19 +569,33 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.effective_user.id)
-    push_menu(user_id, start)
-
-    faq_keys = [
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ],
+    keyboard = [
+        [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
+        for i, q in enumerate(FAQ_FULL_TEXT)
     ]
-    markup = ReplyKeyboardMarkup(faq_keys, resize_keyboard=True)
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=FAQ_FULL_TEXT, reply_markup=markup
-    )
+    await update.message.reply_text("❓ پرسش‌های متداول (FAQ)", reply_markup=reply_markup)
+
+
+async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "go_back_faq":
+        keyboard = [
+            [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
+            for i, q in enumerate(FAQ_FULL_TEXT)
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text("❓ پرسش‌های متداول (FAQ)", reply_markup=reply_markup)
+    else:
+        index = int(query.data.split("_")[1])
+        question, answer = FAQ_FULL_TEXT[index]
+        keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="go_back_faq")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await query.edit_message_text(f"{question}\n\n{answer}", reply_markup=reply_markup)
 
 
 async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -703,6 +719,8 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await start(update, context)
     elif user_state == BotState.MY_SUBS_LIST:
         if text == GO_BACK_TEXT:
+            await start(update, context)
+        else:
             await start(update, context)
     elif user_state == BotState.ADMIN_PANEL:
         if text == USERS_STATS:
