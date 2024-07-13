@@ -21,7 +21,7 @@ async def go_back(update, context):
 
 
 def is_valid_username(text):
-    pattern = r"^[A-Za-z0-9_]{5,32}$"
+    pattern = r"^[A-Za-z0-9_@]{5,32}$"
 
     if re.match(pattern, text):
         return True
@@ -111,3 +111,8 @@ def get_user_purchased():
     WHERE i.is_paid = 'true';
     """)
     return cur.fetchone()[0]
+
+
+def sanitize_username(username):
+    # Remove '@' if it exists in the username
+    return username.replace('@', '')

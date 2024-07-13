@@ -15,7 +15,8 @@ from utilities.utils import (
     get_daily_new_users,
     get_weekly_new_users,
     format_with_commas,
-    get_user_purchased
+    get_user_purchased,
+    sanitize_username
 )
 from utilities.currencyapi import (
     three_m_price,
@@ -114,7 +115,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if user_id == ADMIN_CHAT_ID:
-        start_keys.append([KeyboardButton(text=ADMIN_PANEL_TEXT)])
+        start_keys = [[KeyboardButton(text=ADMIN_PANEL_TEXT)]]
 
     markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
 
@@ -168,6 +169,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     await subs_list(update, context)
             else:
                 if is_valid_username(text):
+                    text = sanitize_username(text)
                     set_session(user_id, "entered_username", text)
                     set_session(user_id, "awaiting_username", "false")
                     set_user_state(user_id, BotState.SUBS_LIST)
@@ -330,7 +332,6 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ex_btn = None
     if new_status == "Canceled":
         ex_btn = data[3]
-        print(ex_btn)
 
     if new_status == "Pending Approval":
         persian_new_status = PENDING_APPROVAL_TEXT
@@ -418,7 +419,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ],
                     [
                         InlineKeyboardButton(
-                            text=GO_BACK_TEXT, callback_data="go_back"
+                            text=GO_BACK_TEXT, callback_data="go_back_cancelled"
                         ),
                     ],
                 ]
@@ -437,7 +438,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             url="https://t.me/padraahani1386",
                         ),
                     ],
-                    [InlineKeyboardButton(text=GO_BACK_TEXT, callback_data="go_back")],
+                    [InlineKeyboardButton(text=GO_BACK_TEXT, callback_data="go_back_cancelled")],
                 ]
                 reply_markup = InlineKeyboardMarkup(in_keyboard)
                 await context.bot.send_message(
@@ -465,6 +466,17 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             caption=f"{FAILED_UPDATE_STATUS_TEXT}\nError: {str(e)}",
             reply_markup=query.message.reply_markup,
         )
+
+async def cancelled_message_go_back_handler(
+        update: Update, context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    data = await query.answer()
+    await context.bot.delete_message(
+        chat_id=update.effective_chat.id,
+        message_id=query.message.message_id,
+    )
+    await start(update, context)
 
 
 async def cancelled_handle_back_button(
@@ -573,9 +585,11 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
         for i, q in enumerate(FAQ_FULL_TEXT)
     ]
+    keyboard.append([InlineKeyboardButton(text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"), InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled"), ], )
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await update.message.reply_text("❓ پرسش‌های متداول (FAQ)", reply_markup=reply_markup)
+
+    await update.message.reply_text(FAQ_TEXT, reply_markup=reply_markup)
 
 
 async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -587,12 +601,14 @@ async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
             for i, q in enumerate(FAQ_FULL_TEXT)
         ]
+        keyboard.append([InlineKeyboardButton(text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"),
+                         InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled"), ], )
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text("❓ پرسش‌های متداول (FAQ)", reply_markup=reply_markup)
+        await query.edit_message_text(FAQ_TEXT, reply_markup=reply_markup)
     else:
         index = int(query.data.split("_")[1])
         question, answer = FAQ_FULL_TEXT[index]
-        keyboard = [[InlineKeyboardButton("🔙 بازگشت", callback_data="go_back_faq")]]
+        keyboard = [[InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_faq")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(f"{question}\n\n{answer}", reply_markup=reply_markup)
@@ -705,7 +721,6 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
             set_user_state(user_id, BotState.MY_SUBS_LIST)
             await my_subs(update, context)
         elif text == FAQ_TEXT:
-            set_user_state(user_id, BotState.FAQ)
             await faq(update, context)
         elif text == ADMIN_PANEL_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
