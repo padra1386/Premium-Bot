@@ -56,7 +56,7 @@ sudo -u postgres createdb premiumbot
 Add a new user to your system (replace `padra` with your desired username).
 
 ```bash
-sudo adduser padra
+sudo adduser your-name
 ```
 
 ### 5. Set Up Redis
