@@ -75,6 +75,25 @@ sudo apt-get update
 sudo apt-get install redis
 ```
 
+### 5. Set Up Redis
+
+Customize the .env file with you're own data
+
+```bash
+token=xxx
+db_host="xxx"
+db_name="xxx"
+db_user="xxx"
+db_password="xxx"
+db_port=xxx
+three_m_usd_price=xxx
+nine_m_usd_price=xxx
+twelve_m_usd_price=xxx
+fee_amount=xxx
+profit_amount=2xxx
+admin_chat_id=xxx
+```
+
 ### 6. Run the Bot
 
 Run the following scripts to start the Premium Bot.
