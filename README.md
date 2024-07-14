@@ -75,7 +75,7 @@ sudo apt-get update
 sudo apt-get install redis
 ```
 
-### 5. Set Up Redis
+### 6. Customize The .env File
 
 Customize the .env file with you're own data
 
@@ -94,7 +94,7 @@ profit_amount=2xxx
 admin_chat_id=xxx
 ```
 
-### 6. Run the Bot
+### 7. Run the Bot
 
 Run the following scripts to start the Premium Bot.
 
