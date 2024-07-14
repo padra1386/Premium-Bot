@@ -1,4 +1,4 @@
-# Premium Bot Setup Guide
+# Premium Bot Setup Guide 📝
 
 This guide will help you set up the Premium Bot on your system. Follow these steps to install the necessary dependencies and configure the required services.
 
@@ -10,7 +10,7 @@ Ensure the following are installed on your system:
 - `pip` (Python package installer)
 - `curl`
 
-## Installation Steps
+## Installation Steps 🔧💻
 
 ### 1. Clone the Repository
 
