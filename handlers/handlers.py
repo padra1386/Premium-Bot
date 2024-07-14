@@ -168,7 +168,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     )
                     await subs_list(update, context)
             else:
-                if is_valid_username(text):
+                if is_valid_username(sanitize_username(text)):
                     text = sanitize_username(text)
                     set_session(user_id, "entered_username", text)
                     set_session(user_id, "awaiting_username", "false")
