@@ -103,10 +103,6 @@ python3 currencyapi.py
 python3 main.py
 ```
 
-## Additional Information
-
-For more details on configuring and customizing the Premium Bot, refer to the documentation provided in the repository.
-
 ## Troubleshooting
 
 If you encounter any issues during installation or setup, refer to the troubleshooting section in the documentation or raise an issue on the [GitHub repository](https://github.com/padra1386/Premium-Bot/issues).
