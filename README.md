@@ -90,7 +90,7 @@ three_m_usd_price=xxx
 nine_m_usd_price=xxx
 twelve_m_usd_price=xxx
 fee_amount=xxx
-profit_amount=2xxx
+profit_amount=xxx
 admin_chat_id=xxx
 ```
 
