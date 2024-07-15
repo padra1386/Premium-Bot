@@ -18,7 +18,7 @@ from utilities.utils import (
     get_user_purchased,
     sanitize_username
 )
-from utilities.currencyapi import (
+from currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
