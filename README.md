@@ -95,7 +95,7 @@ Connect to the new database.
 psql -d your-database-name
 ```
 
-### 5. Set Up Redis
+### 4. Set Up Redis
 
 Add the Redis GPG key and repository to your system.
 
@@ -111,7 +111,7 @@ sudo apt-get update
 sudo apt-get install redis
 ```
 
-### 6. Customize The .env File
+### 5. Customize The .env File
 
 Customize the .env file with your own data
 
@@ -130,7 +130,7 @@ profit_amount=your-preferred-price
 admin_chat_id=your-admin-chat-id
 ```
 
-### 7. Run the Bot
+### 6. Run the Bot
 
 Run the following scripts to start the Premium Bot.
 
