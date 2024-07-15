@@ -1,6 +1,3 @@
-Sure, I can help you update the README.md file. Here is the modified content with the updated PostgreSQL setup instructions:
-
-```markdown
 # Premium Bot Setup Guide 📝
 
 This guide will help you set up the Premium Bot on your system. Follow these steps to install the necessary dependencies and configure the required services.
@@ -96,14 +93,6 @@ Connect to the new database.
 
 ```bash
 psql -d your-database-name
-```
-
-### 4. Add a New System User
-
-Add a new user to your system (replace `padra` with your desired username).
-
-```bash
-sudo adduser your-name
 ```
 
 ### 5. Set Up Redis
