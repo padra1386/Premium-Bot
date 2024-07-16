@@ -3,17 +3,10 @@ FROM python:3.9-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    APP_HOME=/app
+    APP_HOME=/
 
 # Set the working directory in the container
 WORKDIR $APP_HOME
-
-# Install system dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       gcc \
-       libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .

@@ -1,40 +1,43 @@
-version: '3'
-
 services:
   bot:
     build: .
     ports:
       - "8080:8080"
     environment:
-      - REDIS_HOST=redis
-      - POSTGRES_HOST=postgres
-      - POSTGRES_DB=dockerdb
-      - POSTGRES_USER=padra
-      - POSTGRES_PASSWORD=ra6656634ra
-      - POSTGRES_PORT=5432
-      - TOKEN=7469559972:AAG6MVaFQ2ajeu3wra6zSCUfoDtfaQ6-ZEI
-      - THREE_M_USD_PRICE=11.99
-      - NINE_M_USD_PRICE=15.99
-      - TWELVE_M_USD_PRICE=28.99
-      - FEE_AMOUNT=1
-      - PROFIT_AMOUNT=2
-      - ADMIN_CHAT_ID=7481295649
+    - REDIS_HOST=${redis}
+    - POSTGRES_HOST=${db_host}
+    - POSTGRES_DB=${db_name}
+    - POSTGRES_USER=${db_user}
+    - POSTGRES_PASSWORD=${db_password}
+    - POSTGRES_PORT=${db_port}
+    - TOKEN=${token}
+    - THREE_M_USD_PRICE=${three_m_usd_price}
+    - NINE_M_USD_PRICE=${nine_m_usd_price}
+    - TWELVE_M_USD_PRICE=${twelve_m_usd_price}
+    - FEE_AMOUNT=${fee_amount}
+    - PROFIT_AMOUNT=${profit_amount}
+    - ADMIN_CHAT_ID=${admin_chat_id}
     depends_on:
-      - redis
-      - postgres
+      db:
+        condition: service_healthy
 
   redis:
-    image: redis:latest
+    image: redis
     ports:
       - "6379:6379"
 
-  postgres:
-    image: postgres:latest
+  db:
+    image: postgres
+    restart: always
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: dockerdb
-      POSTGRES_USER: padra
-      POSTGRES_PASSWORD: ra6656634ra
-    # Uncomment this if necessary, but usually the default setup allows TCP/IP connections
-    # command: ["postgres", "-c", "unix_socket_directories=/var/run/postgresql"]
+      POSTGRES_DB: ${db_name}
+      POSTGRES_USER: ${db_user}
+      PGUSER: ${db_user}
+      POSTGRES_PASSWORD: ${db_password}
+    healthcheck:
+      test: "pg_isready -h db"
+      interval: 3s
+      timeout: 5s
+      retries: 5
