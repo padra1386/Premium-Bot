@@ -29,20 +29,32 @@ services_data = [
 ]
 
 
+def check_rows_count():
+    cur.execute("SELECT COUNT(*) FROM services")
+    count = cur.fetchone()[0]
+    return count
+
+def insert_data_if_empty():
+    count = check_rows_count()
+    if count == 0:
+        insert_data()
+    else:
+        print("Table 'services' is not empty. Skipping insertion.")
+
 def insert_data():
     for service_name, price, fee, profit in services_data:
         cur.execute(
             """
-                INSERT INTO services (service_name, price, fee, profit) VALUES (%s, %s, %s, %s)
+            INSERT INTO services (service_name, price, fee, profit) VALUES (%s, %s, %s, %s)
             """,
             (service_name, price, fee, profit),
         )
-
         conn.commit()
 
+# Assuming 'conn' and 'cur' are already defined elsewhere and connected to your database
 
-def main():
-    insert_data()
+# Usage:
+insert_data_if_empty()
 
 
 if __name__ == "__main__":

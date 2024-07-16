@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  bot:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=dockerdb
+      - POSTGRES_USER=padra
+      - POSTGRES_PASSWORD=ra6656634ra
+      - POSTGRES_PORT=5432
+      - TOKEN=7469559972:AAG6MVaFQ2ajeu3wra6zSCUfoDtfaQ6-ZEI
+      - THREE_M_USD_PRICE=11.99
+      - NINE_M_USD_PRICE=15.99
+      - TWELVE_M_USD_PRICE=28.99
+      - FEE_AMOUNT=1
+      - PROFIT_AMOUNT=2
+      - ADMIN_CHAT_ID=7481295649
+    depends_on:
+      - redis
+      - postgres
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: dockerdb
+      POSTGRES_USER: padra
+      POSTGRES_PASSWORD: ra6656634ra
+    # Uncomment this if necessary, but usually the default setup allows TCP/IP connections
+    # command: ["postgres", "-c", "unix_socket_directories=/var/run/postgresql"]

@@ -26,7 +26,7 @@ from handlers.handlers import (
     cancelled_handle_back_button,
     handle_states,
     faq_callback,
-    cancelled_message_go_back_handler
+    cancelled_message_go_back_handler,
 )
 from utilities.texts import (
     THREE_M_SUB_TEXT,
@@ -99,8 +99,12 @@ def main():
 
     faq_callback_handler = CallbackQueryHandler(faq_callback, pattern="^faq_")
     faq_go_back_handler = CallbackQueryHandler(faq_callback, pattern="^go_back_faq$")
-    cancelled_message_go_back = CallbackQueryHandler(cancelled_message_go_back_handler, pattern="^go_back_cancelled")
-    handle_states_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, handle_states)
+    cancelled_message_go_back = CallbackQueryHandler(
+        cancelled_message_go_back_handler, pattern="^go_back_cancelled$"
+    )
+    handle_states_handler = MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_states
+    )
     app.add_handler(TypeHandler(Update, process_update), group=-1)
 
     app.add_handlers(
@@ -123,7 +127,7 @@ def main():
             inline_keyboard_go_back_handler,
             faq_go_back_handler,
             faq_callback_handler,
-            cancelled_message_go_back
+            cancelled_message_go_back,
         ]
     )
 

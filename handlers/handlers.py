@@ -16,7 +16,7 @@ from utilities.utils import (
     get_weekly_new_users,
     format_with_commas,
     get_user_purchased,
-    sanitize_username
+    sanitize_username,
 )
 from currencyapi import (
     three_m_price,
@@ -512,7 +512,6 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_username = user_data.username
             user_sub = invoice_details.get("title", "N/A")
             sub_price = invoice_details.get("price", "N/A")
-            print(sub_price)
 
             if user_username:
                 cur.execute(
@@ -562,6 +561,16 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             reply_markup = InlineKeyboardMarkup(inline_keyboard)
 
+            sent_keyboard =  [
+                [
+                    InlineKeyboardButton(
+                        text=GO_BACK_TEXT,
+                        callback_data="go_back_cancelled",
+                    ),
+                ]
+            ]
+            sent_reply_markup = InlineKeyboardMarkup(sent_keyboard)
+
             await context.bot.send_photo(
                 chat_id=admin_chat_id,
                 photo=file_id,
@@ -569,9 +578,8 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup,
             )
 
-            await context.bot.send_message(chat_id=chat_id, text=PHOTO_SENT_SUCCESSFULLY)
-            set_user_state(user_id, BotState.START)
-            await start(update, context)
+            await context.bot.send_message(chat_id=chat_id, text=PHOTO_SENT_SUCCESSFULLY, reply_markup=sent_reply_markup)
+           
 
         except Exception as e:
             await context.bot.send_message(
@@ -685,10 +693,6 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     daily_new_users = get_daily_new_users()
     weekly_new_users = get_weekly_new_users()
     user_w_paid_invoice = get_user_purchased()
-    print(total_users)
-    print(daily_new_users)
-    print(weekly_new_users)
-    print(user_w_paid_invoice)
 
     message_text = f"""
 📊 آمار کاربران
