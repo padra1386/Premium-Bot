@@ -8,7 +8,7 @@ Ensure the following are installed on your system:
 
 - Python 3
 - `pip` (Python package installer)
-- `curl`
+- Docker (for containerization)
 
 ## Installation Steps 🔧💻
 
@@ -20,110 +20,12 @@ Clone the Premium Bot repository to your local machine and navigate to the direc
 git clone https://github.com/padra1386/Premium-Bot.git
 cd Premium-Bot
 ```
+### 2. Crate And Customize The .env File
 
-### 2. Install Python Dependencies
-
-Install the required Python packages using `pip`.
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Set Up PostgreSQL
-
-Update your package lists and install PostgreSQL along with the necessary extensions.
-
-```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-```
-
-Create a new PostgreSQL user interactively.
-
-```bash
-sudo -u postgres createuser --interactive
-```
-
-Add a new system user (replace `your-username` with your desired username).
-
-```bash
-sudo adduser your-username
-```
-
-Switch to the PostgreSQL user.
-
-```bash
-sudo -i -u postgres
-```
-
-Open the PostgreSQL prompt.
-
-```bash
-psql
-```
-
-Set the password for the `postgres` user and your new user, and grant superuser privileges to your new user.
-
-```sql
-ALTER USER postgres WITH PASSWORD 'my_password';
-ALTER USER your-username WITH PASSWORD 'my_password';
-ALTER USER your-username WITH SUPERUSER;
-\q
-```
-
-Exit the PostgreSQL user session.
-
-```bash
-exit
-```
-
-Switch to your new system user.
-
-```bash
-sudo -i -u your-username
-```
-
-Create a new database (replace `your-database-name` with your desired database name).
-
-```bash
-createdb your-database-name
-```
-
-Connect to the new database.
-
-```bash
-psql -d your-database-name
-```
-
-### 4. Set Up Redis
-
-Add the Redis GPG key and repository to your system.
-
-```bash
-curl -fsSL https://packages.redis.io/gpg | sudo gpg --dearmor -o /usr/share/keyrings/redis-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] https://packages.redis.io/deb $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/redis.list
-```
-
-Update your package lists and install Redis.
-
-```bash
-sudo apt-get update
-sudo apt-get install redis
-```
-
-Start Redis Server
-
-```bash
-redis-server
-```
-
-### 5. Customize The .env File
-
-Customize the .env file with your own data
+Create a new .env and Customize with your desired data
 
 ```bash
 token=your-telegram-bot-token
-db_host="your-db_host"
 db_name="your-db-name"
 db_user="your-user"
 db_password="your-password"
@@ -136,13 +38,13 @@ profit_amount=your-preferred-price
 admin_chat_id=your-admin-chat-id
 ```
 
-### 6. Run the Bot
+### 3. Build and Start Docker Containers
 
-Run the following scripts to start the Premium Bot.
+Build and start the Docker containers using Docker Compose.
 
 ```bash
-python3 currencyapi.py
-python3 main.py
+docker-compose build
+docker-compose up
 ```
 
 ## Troubleshooting
