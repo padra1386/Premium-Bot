@@ -111,6 +111,12 @@ sudo apt-get update
 sudo apt-get install redis
 ```
 
+Start Redis Server
+
+```bash
+redis-server
+```
+
 ### 5. Customize The .env File
 
 Customize the .env file with your own data
