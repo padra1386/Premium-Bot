@@ -11,6 +11,7 @@ class BotState(Enum):
     INVOICE_LIST = "sending invoice for user"
     ADMIN_PANEL = "admin panel"
     USERS_STATS = 'bot users stats'
+    SELL_STATS = 'bot sells stats'
 
 
 def get_user_state(user_id):

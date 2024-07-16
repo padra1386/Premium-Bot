@@ -17,12 +17,17 @@ from utilities.utils import (
     format_with_commas,
     get_user_purchased,
     sanitize_username,
+    get_sell_stats,
+    solar_to_gregorian,
 )
 from currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
     last_price,
+    three_m_profit,
+    six_m_profit,
+    twelve_m_profit,
 )
 from utilities.texts import (
     BUY_PREMIUM_TEXT,
@@ -52,14 +57,16 @@ from utilities.texts import (
     approved_payment,
     approved,
     USERS_STATS,
-PHOTO_SENT_SUCCESSFULLY
+    SELL_STATS,
+    PHOTO_SENT_SUCCESSFULLY,
 )
-from config import ADMIN_CHAT_ID
+from config import ADMIN_CHAT_ID, PROFIT_AMOUNT
 import uuid
 from db.dbconn import conn, cur
 from redis_files.redis_connection import redis_conn
 from redis_files.states import set_user_state, get_user_state, BotState
 from redis_files.session import set_session, get_session, delete_session
+from datetime import datetime
 
 
 def push_menu(user_id: str, menu_function):
@@ -211,7 +218,8 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     markup = InlineKeyboardMarkup(subs_list_keys)
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup)
+        chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup
+    )
 
 
 async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -235,7 +243,9 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         set_user_state(user_id, BotState.INVOICE_LIST)
         # Delete the original subs_list message after state change
-        await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=query.message.message_id)
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id, message_id=query.message.message_id
+        )
         await buy_for_self(update, context)
     else:
         await start(update, context)
@@ -438,7 +448,11 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             url="https://t.me/padraahani1386",
                         ),
                     ],
-                    [InlineKeyboardButton(text=GO_BACK_TEXT, callback_data="go_back_cancelled")],
+                    [
+                        InlineKeyboardButton(
+                            text=GO_BACK_TEXT, callback_data="go_back_cancelled"
+                        )
+                    ],
                 ]
                 reply_markup = InlineKeyboardMarkup(in_keyboard)
                 await context.bot.send_message(
@@ -467,8 +481,9 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=query.message.reply_markup,
         )
 
+
 async def cancelled_message_go_back_handler(
-        update: Update, context: ContextTypes.DEFAULT_TYPE
+    update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
     data = await query.answer()
@@ -480,7 +495,7 @@ async def cancelled_message_go_back_handler(
 
 
 async def cancelled_handle_back_button(
-        update: Update, context: ContextTypes.DEFAULT_TYPE
+    update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
     await query.answer()
@@ -561,7 +576,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
             reply_markup = InlineKeyboardMarkup(inline_keyboard)
 
-            sent_keyboard =  [
+            sent_keyboard = [
                 [
                     InlineKeyboardButton(
                         text=GO_BACK_TEXT,
@@ -578,8 +593,12 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup,
             )
 
-            await context.bot.send_message(chat_id=chat_id, text=PHOTO_SENT_SUCCESSFULLY, reply_markup=sent_reply_markup)
-           
+            set_user_state(user_id, BotState.START)
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=PHOTO_SENT_SUCCESSFULLY,
+                reply_markup=sent_reply_markup,
+            )
 
         except Exception as e:
             await context.bot.send_message(
@@ -593,9 +612,15 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
         for i, q in enumerate(FAQ_FULL_TEXT)
     ]
-    keyboard.append([InlineKeyboardButton(text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"), InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled"), ], )
+    keyboard.append(
+        [
+            InlineKeyboardButton(
+                text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"
+            ),
+            InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled"),
+        ],
+    )
     reply_markup = InlineKeyboardMarkup(keyboard)
-
 
     await update.message.reply_text(FAQ_TEXT, reply_markup=reply_markup)
 
@@ -609,8 +634,14 @@ async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
             for i, q in enumerate(FAQ_FULL_TEXT)
         ]
-        keyboard.append([InlineKeyboardButton(text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"),
-                         InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled"), ], )
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"
+                ),
+                InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled"),
+            ],
+        )
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(FAQ_TEXT, reply_markup=reply_markup)
     else:
@@ -619,7 +650,9 @@ async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_faq")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query.edit_message_text(f"{question}\n\n{answer}", reply_markup=reply_markup)
+        await query.edit_message_text(
+            f"{question}\n\n{answer}", reply_markup=reply_markup
+        )
 
 
 async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -679,6 +712,7 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_keys = [
         [
             KeyboardButton(text=USERS_STATS),
+            KeyboardButton(text=SELL_STATS),
         ],
     ]
 
@@ -704,6 +738,38 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 تعداد کاربران جدید این هفته : {weekly_new_users}
 
 تعداد کاربرانی که حداقل یک خرید انجام دادند : {user_w_paid_invoice} 
+
+"""
+
+    await context.bot.send_message(update.effective_chat.id, message_text)
+
+
+async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    result, first_day, last_day = get_sell_stats()
+
+    total_paid_invoices = result[0]
+    total_sales = result[1]
+    total_profit = total_paid_invoices * three_m_profit
+    if total_sales and total_profit:
+        formatted_sales = format_with_commas(total_sales)
+        formatted_profit = format_with_commas(total_profit)
+    else:
+        formatted_sales =1
+        formatted_profit =1
+    print("First Day :", first_day)
+    print("last Day :", last_day)
+
+
+    message_text = f"""
+📊 آمار فروش
+
+از تاریخ {first_day} تا تاریخ {last_day}
+
+تعداد کل خرید ها : {total_paid_invoices}
+
+مقدار فروش کل : {formatted_sales}
+
+مقدار سود کل : {formatted_profit}
 
 """
 
@@ -745,6 +811,12 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == USERS_STATS:
             set_user_state(user_id, BotState.USERS_STATS)
             await user_stats_handler(update, context)
+        elif text == SELL_STATS:
+            set_user_state(user_id, BotState.SELL_STATS)
+            await sell_stats_handler(update, context)
     elif user_state == BotState.USERS_STATS:
         if text == USERS_STATS:
             await user_stats_handler(update, context)
+    elif user_state == BotState.SELL_STATS:
+        if text == SELL_STATS:
+            await sell_stats_handler(update, context)
