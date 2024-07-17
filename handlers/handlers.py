@@ -56,18 +56,25 @@ from utilities.texts import (
     cancelled_username_text,
     approved_payment,
     approved,
+    sale_variables_text,
+    sale_stats_text,
+    users_stat_text,
+    invoice_text,
+    user_invoice_text,
     USERS_STATS,
     SELL_STATS,
     PHOTO_SENT_SUCCESSFULLY,
     PAY_APPROVED_TEXT,
-    SELL_INFO
+    SELL_INFO,
+    NO_SUB_TEXT,
+    REDIS_ERROR
 )
 from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT
 import uuid
 from db.dbconn import conn, cur
-from redis_files.redis_connection import redis_conn
-from redis_files.states import set_user_state, get_user_state, BotState
-from redis_files.session import set_session, get_session, delete_session
+from redis_conn.redis_connection import redis_conn
+from redis_conn.states import set_user_state, get_user_state, BotState
+from redis_conn.session import set_session, get_session, delete_session
 from datetime import datetime
 
 
@@ -308,44 +315,11 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Send the invoice or next steps here
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"""🧾 فاکتور شما ایجاد شد. 
-
-💢 درخواست:{invoice_title} 
-
-🛍 مبلغ فاکتور:{formatted_price} تومان
-
-✅ قابل پرداخت:{formatted_price} تومان
-
-🔸 شماره کارت:
-
-12345678998765432
-به نام پادرا آهنی
-
-👤 برای ایدی تلگرام :{invoice_username}
-
-📌 لطفا اسکرین شات واریزی را برای ربات ارسال نمایید""",
+            text=user_invoice_text(
+                invoice_title, formatted_price, invoice_username)
         )
     else:
         await start(update, context)
-
-
-# async def handle_username_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     user_id = str(update.effective_user.id)
-#     query = update.callback_query
-#     await query.answer()
-#     data = query.data
-
-#     if data == "use_telegram_username":
-#         # Retrieve username from Telegram user data
-#         user_data = update.effective_user
-#         username = user_data.username
-#         redis_files.set(f"entered_username:{user_id}", username)
-#         redis_files.set(f"awaiting_username:{user_id}", "false")
-#         await subs_list(update, context)  # Proceed to the subscription list
-#     elif data == "go_back":
-#         await go_back(update, context)
-#     else:
-#         await query.edit_message_text(text=INVALID_OPTION_TEXT)
 
 
 async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -416,19 +390,6 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     chat_id=user_chat_id,
                     text=approved_payment(sub_name),
                 )
-            # elif new_status == "Reviewing":
-            #     inline_keyboard = [
-            #         [
-            #             InlineKeyboardButton(
-            #                 text=PAY_APPROVED_TEXT,
-            #                 callback_data=f"status:{invoice_id}:Pay Approved",
-            #             ),
-            #             InlineKeyboardButton(
-            #                 text=CANCELLED_TEXT,
-            #                 callback_data=f"status:{invoice_id}:Canceled:ex_Pay Approved",
-            #             ),
-            #         ]
-            #     ]
             elif new_status == "Approved":
                 await context.bot.send_message(
                     chat_id=user_chat_id,
@@ -500,24 +461,19 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
-async def cancelled_message_go_back_handler(
+async def go_back_handle(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
     data = await query.answer()
-    await context.bot.delete_message(
-        chat_id=update.effective_chat.id,
-        message_id=query.message.message_id,
-    )
-    await start(update, context)
-
-
-async def cancelled_handle_back_button(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-):
-    query = update.callback_query
-    await query.answer()
-    await start(update, context)
+    if query.data == "go_back_cancelled":
+        await context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=query.message.message_id,
+        )
+        await start(update, context)
+    elif query.data == "go_back":
+        await start(update, context)
 
 
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -533,7 +489,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             invoice_details_str = get_session(user_id, "invoice_details")
             if not invoice_details_str:
-                raise ValueError("Invoice details not found in Redis")
+                raise ValueError(REDIS_ERROR)
 
             # Deserialize the invoice details
             invoice_details = json.loads(invoice_details_str)
@@ -570,20 +526,8 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_data = update.message.from_user
             first_name = user_data["first_name"]
             last_name = user_data["last_name"]
-            invoice_text = f"""**فاکتور**
-
-درخواست : {invoice_details.get('title', 'N/A')}
-نام : {first_name}
-نام خانوادگی : {last_name}
-ایدی کاربر : {user_id}
-ایدی تلگرام اصلی : @{user_username}
-ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
-قیمت تتر : {format_with_commas(int(float(last_price)))}
-قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
-کارمزد فاکتور : {format_with_commas(fee_amount)}
-سود فاکتور : {format_with_commas(profit_amount)}
-شماره فاکتور : {invoice_id}"""
-
+            invoice_text_message = invoice_text(
+                invoice_details, first_name, last_name, user_id, user_username, last_price, fee_amount, profit_amount, invoice_id)
             inline_keyboard = [
                 [
                     InlineKeyboardButton(
@@ -611,7 +555,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_photo(
                 chat_id=admin_chat_id,
                 photo=file_id,
-                caption=invoice_text,
+                caption=invoice_text_message,
                 reply_markup=reply_markup,
             )
 
@@ -715,7 +659,7 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         response_message = f"اشتراک‌های شما:\n{subs_list}"
     else:
-        response_message = "شما هیچ اشتراکی ندارید."
+        response_message = NO_SUB_TEXT
 
     my_subs_keys = [
         [
@@ -766,18 +710,8 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
 
-    message_text = f"""
-📊 آمار کاربران
-
-تعداد کل کاربران : {total_users}
-
-تعداد کاربران جدید امروز : {daily_new_users}
-
-تعداد کاربران جدید این هفته : {weekly_new_users}
-
-تعداد کاربرانی که حداقل یک خرید انجام دادند : {user_w_paid_invoice} 
-
-"""
+    message_text = users_stat_text(
+        total_users, daily_new_users, weekly_new_users, user_w_paid_invoice)
 
     await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
@@ -794,8 +728,6 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         formatted_sales = 0
         formatted_profit = 0
-    print("First Day :", first_day)
-    print("last Day :", last_day)
 
     keys = [
         [
@@ -805,18 +737,8 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
 
-    message_text = f"""
-📊 آمار فروش
-
-از تاریخ {format_solar_date(first_day)} تا تاریخ {format_solar_date(last_day)}
-
-تعداد کل خرید ها : {total_paid_invoices}
-
-مقدار فروش کل : {formatted_sales}
-
-مقدار سود کل : {formatted_profit}
-
-"""
+    message_text = sale_stats_text(
+        first_day, last_day, total_paid_invoices, formatted_sales, formatted_profit)
 
     await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
@@ -830,20 +752,8 @@ async def sell_variables(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
-    message_text = f"""
-📊  متغیر های فروش
-
-قیمت اشتراک سه ماهه : ${THREE_M_USD_PRICE}
-
-قیمت اشتراک شش ماه : ${NINE_M_USD_PRICE}
-
-قیمت اشتراک دوازده ماهه : ${TWELVE_M_USD_PRICE}
-
-قیمت کارمزد : ${FEE_AMOUNT}
-
-قیمت سود : ${PROFIT_AMOUNT}
-
-"""
+    message_text = sale_variables_text(
+        THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, PROFIT_AMOUNT)
 
     await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
@@ -854,53 +764,51 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state = get_user_state(user_id)
     text = update.message.text
 
+    start_state_map = {
+        BUY_PREMIUM_TEXT: (BotState.BUY_PREMIUM, buy_sub),
+        MY_PURCHASES_TEXT: (BotState.MY_SUBS_LIST, my_subs),
+        FAQ_TEXT: (None, faq),
+        ADMIN_PANEL_TEXT: (BotState.ADMIN_PANEL, admin_panel)
+    }
+
+    admin_panel_map = {
+        USERS_STATS: (BotState.USERS_STATS, user_stats_handler),
+        SELL_STATS: (BotState.SELL_STATS, sell_stats_handler),
+        SELL_INFO: (BotState.SELL_VARIABLES, sell_variables),
+        GO_BACK_TEXT: (BotState.START, admin_panel)
+    }
+
+    go_back_map = {
+        BotState.MY_SUBS_LIST: BotState.START,
+        BotState.ADMIN_PANEL: BotState.START,
+        BotState.USERS_STATS: BotState.ADMIN_PANEL,
+        BotState.SELL_STATS: BotState.ADMIN_PANEL,
+        BotState.SELL_VARIABLES: BotState.ADMIN_PANEL
+    }
+
     if user_state == BotState.START:
-        if text == BUY_PREMIUM_TEXT:
-            set_user_state(user_id, BotState.BUY_PREMIUM)
-            await buy_sub(update, context)
-            # Call appropriate handler
-        elif text == MY_PURCHASES_TEXT:
-            set_user_state(user_id, BotState.MY_SUBS_LIST)
-            await my_subs(update, context)
-        elif text == FAQ_TEXT:
-            await faq(update, context)
-        elif text == ADMIN_PANEL_TEXT:
-            set_user_state(user_id, BotState.ADMIN_PANEL)
-            await admin_panel(update, context)
+        if text in start_state_map:
+            new_state, action = start_state_map[text]
+            if new_state:
+                set_user_state(user_id, new_state)
+            await action(update, context)
         else:
             await start(update, context)
     elif user_state == BotState.BUY_PREMIUM:
         await handle_text_message(update, context)
     elif user_state == BotState.FAQ:
-        if text:
-            await start(update, context)
+        await start(update, context)
     elif user_state == BotState.MY_SUBS_LIST:
         if text == GO_BACK_TEXT:
+            set_user_state(user_id, go_back_map[user_state])
             await start(update, context)
         else:
             await start(update, context)
     elif user_state == BotState.ADMIN_PANEL:
-        if text == USERS_STATS:
-            set_user_state(user_id, BotState.USERS_STATS)
-            await user_stats_handler(update, context)
-        elif text == SELL_STATS:
-            set_user_state(user_id, BotState.SELL_STATS)
-            await sell_stats_handler(update, context)
-        elif text == SELL_INFO:
-            set_user_state(user_id, BotState.SELL_VARIABLES)
-            await sell_variables(update, context)
-        elif text == GO_BACK_TEXT:
-            set_user_state(user_id, BotState.START)
-            await admin_panel(update, context)
-    elif user_state == BotState.USERS_STATS:
-        if text == GO_BACK_TEXT:
-            set_user_state(user_id, BotState.ADMIN_PANEL)
-            await admin_panel(update, context)
-    elif user_state == BotState.SELL_STATS:
-        if text == GO_BACK_TEXT:
-            set_user_state(user_id, BotState.ADMIN_PANEL)
-            await admin_panel(update, context)
-    elif user_state == BotState.SELL_VARIABLES:
-        if text == GO_BACK_TEXT:
-            set_user_state(user_id, BotState.ADMIN_PANEL)
-            await admin_panel(update, context)
+        if text in admin_panel_map:
+            new_state, action = admin_panel_map[text]
+            set_user_state(user_id, new_state)
+            await action(update, context)
+    elif user_state in go_back_map and text == GO_BACK_TEXT:
+        set_user_state(user_id, go_back_map[user_state])
+        await admin_panel(update, context)

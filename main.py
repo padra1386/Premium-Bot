@@ -23,10 +23,9 @@ from handlers.handlers import (
     handle_sub_choice,
     add_user,
     admin_panel,
-    cancelled_handle_back_button,
+    go_back_handle,
     handle_states,
     faq_callback,
-    cancelled_message_go_back_handler,
 )
 from utilities.texts import (
     THREE_M_SUB_TEXT,
@@ -51,33 +50,9 @@ def main():
     app = Application.builder().token(TOKEN).build()
 
     start_handler = CommandHandler(START_TEXT, start)
-    buy_sub_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^{BUY_PREMIUM_TEXT}$"), buy_sub
-    )
-    subs_list_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^{BUY_FOR_SELF_TEXT}$"), subs_list
-    )
-    buy_self_handler = MessageHandler(
-        filters.TEXT
-        & (
-            filters.Regex(f"^{THREE_M_SUB_TEXT}$")
-            | filters.Regex(f"^{SIX_M_SUB_TEXT}$")
-            | filters.Regex(f"^{TWELVE_M_SUB_TEXT}$")
-        ),
-        buy_for_self,
-    )
     buy_success_handler = MessageHandler(
         filters.PHOTO,
         buy_success,
-    )
-    faq_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^{FAQ_TEXT}$"),
-        faq,
-    )
-
-    my_subs_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^{MY_PURCHASES_TEXT}$"),
-        my_subs,
     )
     go_back_handler = MessageHandler(
         filters.TEXT & filters.Regex(f"^{GO_BACK_TEXT}$"),
@@ -85,22 +60,18 @@ def main():
     )
     status_handler = CallbackQueryHandler(update_status, pattern="^status:")
 
-    handle_text_message_handler = MessageHandler(
-        filters.TEXT & ~filters.COMMAND, handle_text_message
-    )
-    sub_choice_handler = CallbackQueryHandler(handle_sub_choice, pattern=r"^sub:\d+m")
-    admin_panel_handler = MessageHandler(
-        filters.TEXT & filters.Regex(f"^{ADMIN_PANEL_TEXT}$"),
-        admin_panel,
-    )
+    sub_choice_handler = CallbackQueryHandler(
+        handle_sub_choice, pattern=r"^sub:\d+m")
+
     inline_keyboard_go_back_handler = CallbackQueryHandler(
-        cancelled_handle_back_button, pattern="^go_back$"
+        go_back_handle, pattern="^go_back$"
     )
 
     faq_callback_handler = CallbackQueryHandler(faq_callback, pattern="^faq_")
-    faq_go_back_handler = CallbackQueryHandler(faq_callback, pattern="^go_back_faq$")
+    faq_go_back_handler = CallbackQueryHandler(
+        faq_callback, pattern="^go_back_faq$")
     cancelled_message_go_back = CallbackQueryHandler(
-        cancelled_message_go_back_handler, pattern="^go_back_cancelled$"
+        go_back_handle, pattern="^go_back_cancelled$"
     )
     handle_states_handler = MessageHandler(
         filters.TEXT & ~filters.COMMAND, handle_states
@@ -111,18 +82,9 @@ def main():
         [
             handle_states_handler,
             start_handler,
-            # admin_panel_handler,
-            # show_users_handler,
-            # toggle_status_handler,
-            # buy_sub_handler,
-            # subs_list_handler,
-            # buy_self_handler,
             buy_success_handler,
-            # faq_handler,
-            # my_subs_handler,
             go_back_handler,
             status_handler,
-            # handle_text_message_handler,
             sub_choice_handler,
             inline_keyboard_go_back_handler,
             faq_go_back_handler,

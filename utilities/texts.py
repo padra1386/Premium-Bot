@@ -3,6 +3,7 @@ from currencyapi import (
     six_m_price,
     twelve_m_price,
 )
+from utilities.utils import format_solar_date, format_with_commas
 
 WELCOME_TEXT = "خوش آمدید"
 START_TEXT = "start"
@@ -54,6 +55,7 @@ USERS_STATS = "📊 آمار کاربران"
 SELL_STATS = "📊 آمار فروش"
 PHOTO_SENT_SUCCESSFULLY = "✅ عکس واریزی شما با موفقیت برای ادمین ما ارسال شد"
 SELL_INFO = "💳 متغیر های فروش"
+REDIS_ERROR = "Invoice details not found in Redis"
 
 
 def cancelled_username_text(sub_name):
@@ -91,4 +93,91 @@ def approved(sub_name):
 درخواست :{sub_name}
 درخواست شما با موفقیت انجام شد و تلگرام پرمیوم شما برای شما فعال شد
 """
+    return text
+
+
+def sale_variables_text(three_m, six_m, tweleve_m, fee, profit):
+    text = f"""
+📊  متغیر های فروش
+
+قیمت اشتراک سه ماهه : ${three_m}
+
+قیمت اشتراک شش ماه : ${six_m}
+
+قیمت اشتراک دوازده ماهه : ${tweleve_m}
+
+قیمت کارمزد : ${fee}
+
+قیمت سود : ${profit}
+
+"""
+    return text
+
+
+def sale_stats_text(first_day, last_day, total_paid_invoices, formatted_sales, profit):
+    text = f"""
+📊 آمار فروش
+
+از تاریخ {format_solar_date(first_day)} تا تاریخ {format_solar_date(last_day)}
+
+تعداد کل خرید ها : {total_paid_invoices}
+
+مقدار فروش کل : {formatted_sales}
+
+مقدار سود کل : {profit}
+
+"""
+    return text
+
+
+def users_stat_text(total_users, daily_new_users, weekly_new_users, user_w_paid_invoice):
+    text = f"""
+📊 آمار کاربران
+
+تعداد کل کاربران : {total_users}
+
+تعداد کاربران جدید امروز : {daily_new_users}
+
+تعداد کاربران جدید این هفته : {weekly_new_users}
+
+تعداد کاربرانی که حداقل یک خرید انجام دادند : {user_w_paid_invoice}
+
+"""
+    return text
+
+
+def invoice_text(invoice_details, first_name, last_name, user_id, user_username, last_price, fee_amount, profit_amount, invoice_id):
+    text = f"""**فاکتور**
+
+درخواست : {invoice_details.get('title', 'N/A')}
+نام : {first_name}
+نام خانوادگی : {last_name}
+ایدی کاربر : {user_id}
+ایدی تلگرام اصلی : @{user_username}
+ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
+قیمت تتر : {format_with_commas(int(float(last_price)))}
+قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
+کارمزد فاکتور : {format_with_commas(fee_amount)}
+سود فاکتور : {format_with_commas(profit_amount)}
+شماره فاکتور : {invoice_id}"""
+    return text
+
+
+def user_invoice_text(invoice_title, formatted_price, invoice_username):
+    text = f"""🧾 فاکتور شما ایجاد شد.
+
+💢 درخواست:{invoice_title}
+
+🛍 مبلغ فاکتور:{formatted_price} تومان
+
+✅ قابل پرداخت:{formatted_price} تومان
+
+🔸 شماره کارت:
+
+12345678998765432
+به نام پادرا آهنی
+
+👤 برای ایدی تلگرام :{invoice_username}
+
+📌 لطفا اسکرین شات واریزی را برای ربات ارسال نمایید"""
     return text
