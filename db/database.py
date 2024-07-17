@@ -24,7 +24,7 @@ def create_tables():
             username VARCHAR(255),
             sub VARCHAR(255),
             created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            status VARCHAR(50) DEFAULT NULL,
+            status VARCHAR(50) DEFAULT 'Reviewing',
             is_paid VARCHAR(50) DEFAULT 'false',
             price VARCHAR(255)
         )"""

@@ -2,8 +2,8 @@ import re
 import math
 from db.dbconn import conn, cur
 from convertdate import persian
-from telegram import  ReplyKeyboardRemove
-from telegram.ext import  ContextTypes
+from telegram import ReplyKeyboardRemove
+from telegram.ext import ContextTypes
 from datetime import datetime
 
 
@@ -54,7 +54,8 @@ def toggle_user_status(user_id):
 
     # Toggle the status
     new_status = "inactive" if current_status == "active" else "active"
-    cur.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, user_id))
+    cur.execute("UPDATE users SET status = ? WHERE id = ?",
+                (new_status, user_id))
 
     conn.commit()
 
@@ -73,8 +74,10 @@ def gregorian_to_solar(gregorian_date):
 
     return solar_date_str
 
+
 def solar_to_gregorian(solar_year, solar_month, solar_day):
     return persian.to_gregorian(solar_year, solar_month, solar_day)
+
 
 def send_reply(context: ContextTypes.DEFAULT_TYPE, chat_id, reply_text):
     reply_keyboard_remove = ReplyKeyboardRemove()
@@ -88,6 +91,8 @@ def get_total_users():
     return cur.fetchone()[0]
 
 # Function to get the number of new users today
+
+
 def get_daily_new_users():
     cur.execute('''
     SELECT COUNT(*)
@@ -97,6 +102,8 @@ def get_daily_new_users():
     return cur.fetchone()[0]
 
 # Function to get the number of new users this week
+
+
 def get_weekly_new_users():
     cur.execute('''
     SELECT COUNT(*)
@@ -120,17 +127,21 @@ def sanitize_username(username):
     # Remove '@' if it exists in the username
     return username.replace('@', '')
 
+
 def get_sell_stats():
     current_date = datetime.now()
     current_solar_date = gregorian_to_solar(current_date)
 
-    current_solar_year, current_solar_month, current_solar_day = map(int, current_solar_date.split('-'))
+    current_solar_year, current_solar_month, current_solar_day = map(
+        int, current_solar_date.split('-'))
 
     first_day_of_solar_month = f"{current_solar_year:04d}-{current_solar_month:02d}-01"
     last_day_of_solar_month = f"{current_solar_year:04d}-{current_solar_month:02d}-{current_solar_day:02d}"
 
-    first_day_of_month_gregorian = solar_to_gregorian(current_solar_year, current_solar_month, 1)
-    last_day_of_month_gregorian = solar_to_gregorian(current_solar_year, current_solar_month, current_solar_day)
+    first_day_of_month_gregorian = solar_to_gregorian(
+        current_solar_year, current_solar_month, 1)
+    last_day_of_month_gregorian = solar_to_gregorian(
+        current_solar_year, current_solar_month, current_solar_day)
 
     first_day_of_month_gregorian_str = f"{first_day_of_month_gregorian[0]:04d}-{first_day_of_month_gregorian[1]:02d}-{first_day_of_month_gregorian[2]:02d} 00:00:00"
     last_day_of_month_gregorian_str = f"{last_day_of_month_gregorian[0]:04d}-{last_day_of_month_gregorian[1]:02d}-{last_day_of_month_gregorian[2]:02d} 23:59:59"
@@ -147,8 +158,15 @@ def get_sell_stats():
         AND created <= %s;
     '''
 
- 
-    cur.execute(main_query, (first_day_of_month_gregorian_str, last_day_of_month_gregorian_str))
+    cur.execute(main_query, (first_day_of_month_gregorian_str,
+                last_day_of_month_gregorian_str))
     result = cur.fetchone()
 
     return result, first_day_of_solar_month, last_day_of_solar_month
+
+
+def format_solar_date(date_str):
+    # Split the date string into components
+    day, month, year = date_str.split('-')
+    # Rearrange into the desired format
+    return f"{year}-{month}-{day}"
