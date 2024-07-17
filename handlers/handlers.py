@@ -26,9 +26,8 @@ from currencyapi import (
     six_m_price,
     twelve_m_price,
     last_price,
-    three_m_profit,
-    six_m_profit,
-    twelve_m_profit,
+    fee_amount,
+    profit_amount
 )
 from utilities.texts import (
     BUY_PREMIUM_TEXT,
@@ -60,9 +59,10 @@ from utilities.texts import (
     USERS_STATS,
     SELL_STATS,
     PHOTO_SENT_SUCCESSFULLY,
-    PAY_APPROVED_TEXT
+    PAY_APPROVED_TEXT,
+    SELL_INFO
 )
-from config import ADMIN_CHAT_ID, PROFIT_AMOUNT
+from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT
 import uuid
 from db.dbconn import conn, cur
 from redis_files.redis_connection import redis_conn
@@ -233,20 +233,26 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
+    three_m_invoice_price = int(three_m_price) + \
+        int(profit_amount) + int(fee_amount)
+    six_m_invoice_price = int(six_m_price) + \
+        int(profit_amount) + int(fee_amount)
+    twelve_m_invoice_price = int(twelve_m_price) + \
+        int(profit_amount) + int(fee_amount)
 
     if get_user_state(user_id) == BotState.SUBS_LIST:
         if data == "sub:3m":
             set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
             set_session(user_id, "sub_price", str(
-                three_m_price))  # Store as string
+                three_m_invoice_price))  # Store as string
         elif data == "sub:6m":
             set_session(user_id, "sub_choice", SIX_M_SUB_TEXT)
             set_session(user_id, "sub_price", str(
-                six_m_price))  # Store as string
+                six_m_invoice_price))  # Store as string
         elif data == "sub:12m":
             set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
             set_session(user_id, "sub_price", str(
-                twelve_m_price))  # Store as string
+                twelve_m_invoice_price))  # Store as string
         else:
             await query.edit_message_text(text=INVALID_OPTION_TEXT)
             return
@@ -298,7 +304,7 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
 
         set_session(user_id, "invoice_details", json.dumps(invoice_details))
-        formatted_price = format_with_commas(int(invoice_price))
+        formatted_price = format_with_commas(float(invoice_price))
         # Send the invoice or next steps here
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -572,8 +578,10 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ایدی کاربر : {user_id}
 ایدی تلگرام اصلی : @{user_username}
 ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
-قیمت تتر : {int(float(last_price))}
+قیمت تتر : {format_with_commas(int(float(last_price)))}
 قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
+کارمزد فاکتور : {format_with_commas(fee_amount)}
+سود فاکتور : {format_with_commas(profit_amount)}
 شماره فاکتور : {invoice_id}"""
 
             inline_keyboard = [
@@ -731,6 +739,11 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
             KeyboardButton(text=USERS_STATS),
             KeyboardButton(text=SELL_STATS),
         ],
+        [
+            KeyboardButton(text=SELL_INFO),
+        ],
+        [KeyboardButton(text=GO_BACK_TEXT),
+         ]
     ]
 
     markup = ReplyKeyboardMarkup(admin_keys, resize_keyboard=True)
@@ -745,6 +758,14 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     weekly_new_users = get_weekly_new_users()
     user_w_paid_invoice = get_user_purchased()
 
+    keys = [
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
+        ]
+    ]
+
+    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
+
     message_text = f"""
 📊 آمار کاربران
 
@@ -758,7 +779,7 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 """
 
-    await context.bot.send_message(update.effective_chat.id, message_text)
+    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
 
 async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -766,7 +787,7 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     total_paid_invoices = result[0]
     total_sales = result[1]
-    total_profit = total_paid_invoices * three_m_profit
+    total_profit = total_paid_invoices * profit_amount
     if total_sales and total_profit:
         formatted_sales = format_with_commas(total_sales)
         formatted_profit = format_with_commas(total_profit)
@@ -776,10 +797,18 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     print("First Day :", first_day)
     print("last Day :", last_day)
 
+    keys = [
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
+        ]
+    ]
+
+    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
+
     message_text = f"""
 📊 آمار فروش
 
-از تاریخ {first_day} تا تاریخ {last_day}
+از تاریخ {format_solar_date(first_day)} تا تاریخ {format_solar_date(last_day)}
 
 تعداد کل خرید ها : {total_paid_invoices}
 
@@ -789,7 +818,34 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 """
 
-    await context.bot.send_message(update.effective_chat.id, message_text)
+    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
+
+
+async def sell_variables(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    keys = [
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
+        ]
+    ]
+
+    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
+    message_text = f"""
+📊  متغیر های فروش
+
+قیمت اشتراک سه ماهه : ${THREE_M_USD_PRICE}
+
+قیمت اشتراک شش ماه : ${NINE_M_USD_PRICE}
+
+قیمت اشتراک دوازده ماهه : ${TWELVE_M_USD_PRICE}
+
+قیمت کارمزد : ${FEE_AMOUNT}
+
+قیمت سود : ${PROFIT_AMOUNT}
+
+"""
+
+    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
 
 async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -830,9 +886,21 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == SELL_STATS:
             set_user_state(user_id, BotState.SELL_STATS)
             await sell_stats_handler(update, context)
+        elif text == SELL_INFO:
+            set_user_state(user_id, BotState.SELL_VARIABLES)
+            await sell_variables(update, context)
+        elif text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.START)
+            await admin_panel(update, context)
     elif user_state == BotState.USERS_STATS:
-        if text == USERS_STATS:
-            await user_stats_handler(update, context)
+        if text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
     elif user_state == BotState.SELL_STATS:
-        if text == SELL_STATS:
-            await sell_stats_handler(update, context)
+        if text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
+    elif user_state == BotState.SELL_VARIABLES:
+        if text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)

@@ -12,6 +12,7 @@ class BotState(Enum):
     ADMIN_PANEL = "admin panel"
     USERS_STATS = 'bot users stats'
     SELL_STATS = 'bot sells stats'
+    SELL_VARIABLES = 'bot selling prices'
 
 
 def get_user_state(user_id):
