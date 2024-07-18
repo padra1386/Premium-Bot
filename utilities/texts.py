@@ -4,7 +4,7 @@ from currencyapi import (
     twelve_m_price,
 )
 from utilities.utils import format_solar_date, format_with_commas
-from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS
+from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS, CREDIT_CARD_NUMBER, CREDIT_CARD_OWNER
 
 WELCOME_TEXT = "خوش آمدید"
 START_TEXT = "start"
@@ -188,8 +188,8 @@ def user_invoice_text(invoice_title, formatted_price, invoice_username):
 
 🔸 شماره کارت:
 
-12345678998765432
-به نام پادرا آهنی
+{CREDIT_CARD_NUMBER}
+به نام {CREDIT_CARD_OWNER}
 
 👤 برای ایدی تلگرام :{invoice_username}
 

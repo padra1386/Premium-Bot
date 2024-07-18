@@ -36,6 +36,8 @@ services:
     - ADMIN_USERNAME=${admin_username}
     - CHANELL_ID=${chanell_id}
     - WEBSITE_ADDRESS=${website_address}
+    - CREDIT_CARD_NUMBER=${credit_card_number}
+    - CREDIT_CARD_OWNER=${credit_card_owner}
     depends_on:
       db:
         condition: service_healthy
