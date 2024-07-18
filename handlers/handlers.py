@@ -67,9 +67,12 @@ from utilities.texts import (
     PAY_APPROVED_TEXT,
     SELL_INFO,
     NO_SUB_TEXT,
-    REDIS_ERROR
+    REDIS_ERROR,
+    ADMIN_LINK,
+    ABOUT_US_BTN_TEXT,
+    ABOUT_US_TEXT
 )
-from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT
+from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, ADMIN_USERNAME
 import uuid
 from db.dbconn import conn, cur
 from redis_conn.redis_connection import redis_conn
@@ -127,6 +130,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
             KeyboardButton(text=FAQ_TEXT),
+            KeyboardButton(text=ABOUT_US_BTN_TEXT),
         ],
     ]
 
@@ -402,7 +406,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             text=ADMIN_PANEL_TEXT,
-                            url="https://t.me/padraahani1386",
+                            url=ADMIN_LINK,
                         ),
                     ],
                     [
@@ -423,7 +427,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             text="ادمین",
-                            url="https://t.me/padraahani1386",
+                            url=ADMIN_LINK,
                         ),
                     ],
                     [
@@ -488,8 +492,6 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             invoice_details_str = get_session(user_id, "invoice_details")
-            if not invoice_details_str:
-                raise ValueError(REDIS_ERROR)
 
             # Deserialize the invoice details
             invoice_details = json.loads(invoice_details_str)
@@ -581,7 +583,7 @@ async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard.append(
         [
             InlineKeyboardButton(
-                text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"
+                text=ADMIN_PANEL_TEXT, url=ADMIN_LINK
             ),
             InlineKeyboardButton(
                 GO_BACK_TEXT, callback_data="go_back_cancelled"),
@@ -604,7 +606,7 @@ async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append(
             [
                 InlineKeyboardButton(
-                    text=ADMIN_PANEL_TEXT, url="https://t.me/padraahani1386"
+                    text=ADMIN_PANEL_TEXT, url=ADMIN_LINK
                 ),
                 InlineKeyboardButton(
                     GO_BACK_TEXT, callback_data="go_back_cancelled"),
@@ -673,6 +675,21 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def about_us(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text=GO_BACK_TEXT, callback_data="go_back_cancelled"
+            ),
+        ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=ABOUT_US_TEXT,
+        reply_markup=reply_markup,
+    )
 # Admin handler only
 
 
@@ -764,51 +781,59 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state = get_user_state(user_id)
     text = update.message.text
 
-    start_state_map = {
-        BUY_PREMIUM_TEXT: (BotState.BUY_PREMIUM, buy_sub),
-        MY_PURCHASES_TEXT: (BotState.MY_SUBS_LIST, my_subs),
-        FAQ_TEXT: (None, faq),
-        ADMIN_PANEL_TEXT: (BotState.ADMIN_PANEL, admin_panel)
-    }
-
-    admin_panel_map = {
-        USERS_STATS: (BotState.USERS_STATS, user_stats_handler),
-        SELL_STATS: (BotState.SELL_STATS, sell_stats_handler),
-        SELL_INFO: (BotState.SELL_VARIABLES, sell_variables),
-        GO_BACK_TEXT: (BotState.START, admin_panel)
-    }
-
-    go_back_map = {
-        BotState.MY_SUBS_LIST: BotState.START,
-        BotState.ADMIN_PANEL: BotState.START,
-        BotState.USERS_STATS: BotState.ADMIN_PANEL,
-        BotState.SELL_STATS: BotState.ADMIN_PANEL,
-        BotState.SELL_VARIABLES: BotState.ADMIN_PANEL
-    }
-
     if user_state == BotState.START:
-        if text in start_state_map:
-            new_state, action = start_state_map[text]
-            if new_state:
-                set_user_state(user_id, new_state)
-            await action(update, context)
+        if text == BUY_PREMIUM_TEXT:
+            set_user_state(user_id, BotState.BUY_PREMIUM)
+            await buy_sub(update, context)
+            # Call appropriate handler
+        elif text == MY_PURCHASES_TEXT:
+            set_user_state(user_id, BotState.MY_SUBS_LIST)
+            await my_subs(update, context)
+        elif text == FAQ_TEXT:
+            await faq(update, context)
+        elif text == ADMIN_PANEL_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
+        elif text == ABOUT_US_BTN_TEXT:
+            set_user_state(user_id, BotState.ABOUT_US)
+            await about_us(update, context)
         else:
             await start(update, context)
     elif user_state == BotState.BUY_PREMIUM:
         await handle_text_message(update, context)
     elif user_state == BotState.FAQ:
-        await start(update, context)
+        if text:
+            await start(update, context)
     elif user_state == BotState.MY_SUBS_LIST:
         if text == GO_BACK_TEXT:
-            set_user_state(user_id, go_back_map[user_state])
             await start(update, context)
         else:
             await start(update, context)
     elif user_state == BotState.ADMIN_PANEL:
-        if text in admin_panel_map:
-            new_state, action = admin_panel_map[text]
-            set_user_state(user_id, new_state)
-            await action(update, context)
-    elif user_state in go_back_map and text == GO_BACK_TEXT:
-        set_user_state(user_id, go_back_map[user_state])
-        await admin_panel(update, context)
+        if text == USERS_STATS:
+            set_user_state(user_id, BotState.USERS_STATS)
+            await user_stats_handler(update, context)
+        elif text == SELL_STATS:
+            set_user_state(user_id, BotState.SELL_STATS)
+            await sell_stats_handler(update, context)
+        elif text == SELL_INFO:
+            set_user_state(user_id, BotState.SELL_VARIABLES)
+            await sell_variables(update, context)
+        elif text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.START)
+            await admin_panel(update, context)
+    elif user_state == BotState.USERS_STATS:
+        if text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
+    elif user_state == BotState.SELL_STATS:
+        if text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
+    elif user_state == BotState.SELL_VARIABLES:
+        if text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.ADMIN_PANEL)
+            await admin_panel(update, context)
+    elif user_state == BotState.ABOUT_US:
+        if text == ABOUT_US_BTN_TEXT:
+            await about_us(update, context)

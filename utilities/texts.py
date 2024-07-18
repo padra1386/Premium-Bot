@@ -4,6 +4,7 @@ from currencyapi import (
     twelve_m_price,
 )
 from utilities.utils import format_solar_date, format_with_commas
+from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS
 
 WELCOME_TEXT = "خوش آمدید"
 START_TEXT = "start"
@@ -45,9 +46,10 @@ UNKNOWN_TEXT = "نامشخص"
 NO_SUB_TEXT = "🚫 شما اشتراکی ندارید."
 # USERNAME_LIMITS_TEXT = "⚠️ لطفا یوزر نیم را به درستی وارد کنید. یک یوزر نیم درست شامل : حروف انگلیسی A تا Z ، اعداد 0 تا 9 ، آندرسکور( _ )، و ۵ تا ۳۲ حرف است"
 STATUS_UPDATED_TEXT = "وضعیت تغییر کرد به : "
-USERNAME_LIMITS_TEXT = """
+# change
+USERNAME_LIMITS_TEXT = f"""
 ❗️ ایدی تلگرام وارد شده صحیح نمی باشد
-نمونه ایدی تلگرام 👈 @amininejade
+نمونه ایدی تلگرام 👈 @{ADMIN_USERNAME}
 """
 ITS_PAID_TEXT = "✅ مشتری گرامی تراکنش شما تایید شد"
 ADMIN_PANEL_TEXT = "👤  ادمین"
@@ -56,6 +58,18 @@ SELL_STATS = "📊 آمار فروش"
 PHOTO_SENT_SUCCESSFULLY = "✅ عکس واریزی شما با موفقیت برای ادمین ما ارسال شد"
 SELL_INFO = "💳 متغیر های فروش"
 REDIS_ERROR = "Invoice details not found in Redis"
+ADMIN_LINK = f"https://t.me/{ADMIN_USERNAME}"
+ABOUT_US_BTN_TEXT = "ℹ️ درباره ما"
+ABOUT_US_TEXT = f"""
+با ایروپرمیوم تحریم های تلگرام رو با خیال راحت دور بزنید
+
+ 📢ادرس کانال ما : @{CHANELL_ID}
+
+ 👤ادرس ادمین ما : @{ADMIN_USERNAME}
+
+ 🌐ادرس وبسایت ما : {WEBSITE_ADDRESS}
+
+"""
 
 
 def cancelled_username_text(sub_name):

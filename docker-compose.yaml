@@ -33,6 +33,9 @@ services:
     - FEE_AMOUNT=${fee_amount}
     - PROFIT_AMOUNT=${profit_amount}
     - ADMIN_CHAT_ID=${admin_chat_id}
+    - ADMIN_USERNAME=${admin_username}
+    - CHANELL_ID=${chanell_id}
+    - WEBSITE_ADDRESS=${website_address}
     depends_on:
       db:
         condition: service_healthy
