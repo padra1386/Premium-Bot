@@ -795,7 +795,7 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
         elif text == ABOUT_US_BTN_TEXT:
-            set_user_state(user_id, BotState.ABOUT_US)
+
             await about_us(update, context)
         else:
             await start(update, context)
@@ -834,6 +834,6 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
-    elif user_state == BotState.ABOUT_US:
-        if text == ABOUT_US_BTN_TEXT:
-            await about_us(update, context)
+    # elif user_state == BotState.ABOUT_US:
+    #     if text == ABOUT_US_BTN_TEXT:
+    #         await about_us(update, context)
