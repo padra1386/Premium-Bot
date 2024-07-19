@@ -42,6 +42,7 @@ from utilities.texts import (
     PENDING_APPROVAL_TEXT,
     APPROVED_TEXT,
     CANCELLED_TEXT,
+    NOT_PHOTO_ERROR,
     REVIEWING_TEXT,
     CHOOSE_USERNAME_ERROR_TEXT,
     SUB_HELP_TEXT,
@@ -135,13 +136,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if user_id == ADMIN_CHAT_ID:
-        start_keys = [[KeyboardButton(text=ADMIN_PANEL_TEXT)]]
+        set_user_state(user_id, BotState.ADMIN_PANEL)
+        await admin_panel(update, context)
 
-    markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
+    else:
+        markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=WELCOME_TEXT, reply_markup=markup
-    )
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id, text=WELCOME_TEXT, reply_markup=markup
+        )
 
 
 async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -471,9 +474,14 @@ async def go_back_handle(
     query = update.callback_query
     data = await query.answer()
     if query.data == "go_back_cancelled":
+        message_id = query.message.message_id
+        # await context.bot.delete_message(
+        #     chat_id=update.effective_chat.id,
+        #     message_id=message_id-2,
+        # )
         await context.bot.delete_message(
             chat_id=update.effective_chat.id,
-            message_id=query.message.message_id,
+            message_id=message_id,
         )
         await start(update, context)
     elif query.data == "go_back":
@@ -573,6 +581,11 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=update.effective_chat.id,
                 text=e,
             )
+    elif not photo:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="لطفا عکس بفرست",
+        )
 
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -690,7 +703,25 @@ async def about_us(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=ABOUT_US_TEXT,
         reply_markup=reply_markup,
     )
-# Admin handler only
+
+
+async def photo_error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                text=GO_BACK_TEXT, callback_data="go_back_cancelled"
+            ),
+        ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=NOT_PHOTO_ERROR,
+        reply_markup=reply_markup
+    )
+
+    # Admin handler only
 
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -703,8 +734,6 @@ async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             KeyboardButton(text=SELL_INFO),
         ],
-        [KeyboardButton(text=GO_BACK_TEXT),
-         ]
     ]
 
     markup = ReplyKeyboardMarkup(admin_keys, resize_keyboard=True)
@@ -780,6 +809,8 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_state = get_user_state(user_id)
     text = update.message.text
+    photo = update.message.photo
+    video = update.message.video
 
     if user_state == BotState.START:
         if text == BUY_PREMIUM_TEXT:
@@ -819,9 +850,6 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == SELL_INFO:
             set_user_state(user_id, BotState.SELL_VARIABLES)
             await sell_variables(update, context)
-        elif text == GO_BACK_TEXT:
-            set_user_state(user_id, BotState.START)
-            await admin_panel(update, context)
     elif user_state == BotState.USERS_STATS:
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
@@ -834,6 +862,9 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
+    elif user_state == BotState.INVOICE_LIST:
+        if not photo or video:
+            await photo_error_handler(update, context)
     # elif user_state == BotState.ABOUT_US:
     #     if text == ABOUT_US_BTN_TEXT:
     #         await about_us(update, context)
