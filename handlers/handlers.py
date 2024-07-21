@@ -136,15 +136,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if user_id == ADMIN_CHAT_ID:
-        set_user_state(user_id, BotState.ADMIN_PANEL)
-        await admin_panel(update, context)
+        start_keys = [[KeyboardButton(text=ADMIN_PANEL_TEXT)]]
 
-    else:
-        markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
+    markup = ReplyKeyboardMarkup(start_keys, resize_keyboard=True)
 
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id, text=WELCOME_TEXT, reply_markup=markup
-        )
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id, text=WELCOME_TEXT, reply_markup=markup
+    )
 
 
 async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -810,7 +808,6 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state = get_user_state(user_id)
     text = update.message.text
     photo = update.message.photo
-    video = update.message.video
 
     if user_state == BotState.START:
         if text == BUY_PREMIUM_TEXT:
@@ -826,7 +823,6 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
         elif text == ABOUT_US_BTN_TEXT:
-
             await about_us(update, context)
         else:
             await start(update, context)
@@ -850,6 +846,9 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif text == SELL_INFO:
             set_user_state(user_id, BotState.SELL_VARIABLES)
             await sell_variables(update, context)
+        elif text == GO_BACK_TEXT:
+            set_user_state(user_id, BotState.START)
+            await admin_panel(update, context)
     elif user_state == BotState.USERS_STATS:
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
@@ -863,7 +862,7 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
     elif user_state == BotState.INVOICE_LIST:
-        if not photo or video:
+        if not photo:
             await photo_error_handler(update, context)
     # elif user_state == BotState.ABOUT_US:
     #     if text == ABOUT_US_BTN_TEXT:
