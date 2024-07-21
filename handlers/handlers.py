@@ -763,6 +763,7 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result, first_day, last_day = get_sell_stats()
 
+    print(result)
     total_paid_invoices = result[0]
     total_sales = result[1]
     total_profit = total_paid_invoices * profit_amount
