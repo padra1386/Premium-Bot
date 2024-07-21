@@ -853,14 +853,20 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
+        elif text == USERS_STATS:
+            await sell_stats_handler(update, context)
     elif user_state == BotState.SELL_STATS:
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
+        elif text == SELL_STATS:
+            await sell_stats_handler(update, context)
     elif user_state == BotState.SELL_VARIABLES:
         if text == GO_BACK_TEXT:
             set_user_state(user_id, BotState.ADMIN_PANEL)
             await admin_panel(update, context)
+        elif text == SELL_INFO:
+            await sell_variables(update, context)
     elif user_state == BotState.INVOICE_LIST:
         if not photo:
             await photo_error_handler(update, context)
