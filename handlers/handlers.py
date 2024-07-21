@@ -257,14 +257,18 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
             set_session(user_id, "sub_price", str(
                 three_m_invoice_price))  # Store as string
+            set_session(user_id, 'profit_amount', int(profit_amount))
         elif data == "sub:6m":
             set_session(user_id, "sub_choice", SIX_M_SUB_TEXT)
             set_session(user_id, "sub_price", str(
                 six_m_invoice_price))  # Store as string
+            set_session(user_id, 'profit_amount', int(profit_amount))
+
         elif data == "sub:12m":
             set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
             set_session(user_id, "sub_price", str(
                 twelve_m_invoice_price))  # Store as string
+            set_session(user_id, 'profit_amount', int(profit_amount))
         else:
             await query.edit_message_text(text=INVALID_OPTION_TEXT)
             return
@@ -313,6 +317,8 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "title": invoice_title,
             "description": invoice_username,
             "price": invoice_price,
+            "profit": profit_amount,
+            'fee': fee_amount
         }
 
         set_session(user_id, "invoice_details", json.dumps(invoice_details))
@@ -510,6 +516,8 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_sub = invoice_details.get("title", "N/A")
             sub_price = invoice_details.get("price", "N/A")
             default_sub_status = "Reviewing"
+            profit = invoice_details.get('profit', "N/A")
+            fee = invoice_details.get('fee', "N/A")
 
             if user_username:
                 cur.execute(
@@ -535,7 +543,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             first_name = user_data["first_name"]
             last_name = user_data["last_name"]
             invoice_text_message = invoice_text(
-                invoice_details, first_name, last_name, user_id, user_username, last_price, fee_amount, profit_amount, invoice_id)
+                invoice_details, first_name, last_name, user_id, user_username, last_price, fee, profit, invoice_id)
             inline_keyboard = [
                 [
                     InlineKeyboardButton(

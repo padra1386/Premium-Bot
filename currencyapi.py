@@ -71,7 +71,7 @@ cur.execute(
 data = cur.fetchall()
 
 
-profit_amount = int(PROFIT_AMOUNT) * float(last_price)
+profit_amount = round_up_to_thousands(int(PROFIT_AMOUNT) * float(last_price))
 # Assign values to the respective variables
 for service in data:
     service_name, price, fee, profit = service

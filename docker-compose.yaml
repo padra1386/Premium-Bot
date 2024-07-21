@@ -39,10 +39,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
   redis:
     image: redis
     ports:
       - "6379:6379"
-
   
