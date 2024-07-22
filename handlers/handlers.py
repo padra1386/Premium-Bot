@@ -554,7 +554,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             profit_invoice = data[0][0]
             fee_invoice = data[0][1]
             invoice_text_message = invoice_text(
-                invoice_details, first_name, last_name, user_id, user_username, sub_price, fee_invoice, profit_invoice, invoice_id)
+                invoice_details, first_name, last_name, user_id, user_username, fee_invoice, profit_invoice, invoice_id)
             inline_keyboard = [
                 [
                     InlineKeyboardButton(

@@ -2,6 +2,7 @@ from currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
+    last_price
 )
 from utilities.utils import format_solar_date, format_with_commas
 from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS, CREDIT_CARD_NUMBER, CREDIT_CARD_OWNER
@@ -171,7 +172,7 @@ def users_stat_text(total_users, daily_new_users, weekly_new_users, user_w_paid_
     return text
 
 
-def invoice_text(invoice_details, first_name, last_name, user_id, user_username, last_price, fee_amount, profit_amount, invoice_id):
+def invoice_text(invoice_details, first_name, last_name, user_id, user_username, fee_amount, profit_amount, invoice_id):
     text = f"""**فاکتور**
 
 درخواست : {invoice_details.get('title', 'N/A')}
