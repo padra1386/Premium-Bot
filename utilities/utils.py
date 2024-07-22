@@ -148,16 +148,17 @@ def get_sell_stats():
 
     main_query = '''
     SELECT 
-        COUNT(*) AS total_paid_invoices,
-        SUM(CAST(price AS DECIMAL)) AS total_profit
-    FROM 
-        invoice
-    WHERE 
-        is_paid = 'true'
-        AND created >= %s
-        AND created <= %s;
+    COUNT(*) AS total_paid_invoices,
+    SUM(CAST(price AS DECIMAL)) AS total_price,
+    SUM(CAST(profit AS DECIMAL)) AS total_profit,
+    SUM(CAST(fee AS DECIMAL)) AS total_fee
+FROM 
+    invoice
+WHERE 
+    is_paid = 'true'
+    AND created >= %s
+    AND created <= %s;
     '''
-
     cur.execute(main_query, (first_day_of_month_gregorian_str,
                 last_day_of_month_gregorian_str))
     result = cur.fetchone()

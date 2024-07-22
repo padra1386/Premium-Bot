@@ -182,8 +182,8 @@ def invoice_text(invoice_details, first_name, last_name, user_id, user_username,
 ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
 قیمت تتر : {format_with_commas(int(float(last_price)))}
 قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
-کارمزد فاکتور : {format_with_commas(fee_amount)}
-سود فاکتور : {format_with_commas(profit_amount)}
+کارمزد فاکتور : {format_with_commas(int(fee_amount)) }
+سود فاکتور : {format_with_commas(int(profit_amount))}
 شماره فاکتور : {invoice_id}"""
     return text
 

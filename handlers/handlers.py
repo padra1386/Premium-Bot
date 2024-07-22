@@ -19,7 +19,8 @@ from utilities.utils import (
     sanitize_username,
     get_sell_stats,
     solar_to_gregorian,
-    format_solar_date
+    format_solar_date,
+    round_up_to_thousands
 )
 from currencyapi import (
     three_m_price,
@@ -516,15 +517,12 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_sub = invoice_details.get("title", "N/A")
             sub_price = invoice_details.get("price", "N/A")
             default_sub_status = "Reviewing"
-            profit = invoice_details.get('profit', "N/A")
-            fee = invoice_details.get('fee', "N/A")
 
             if user_username:
                 cur.execute(
-                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price) VALUES (%s, %s, %s, %s, %s, "
-                    "%s)",
-                    (user_id, user_username, user_sub,
-                     default_sub_status, invoice_id, str(sub_price)),
+                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price, profit, fee) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (user_id, user_username, user_sub, default_sub_status,
+                     invoice_id, str(sub_price), str(profit_amount), str(fee_amount))
                 )
                 conn.commit()
             else:
@@ -535,15 +533,18 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
             file_id = photo[-1].file_id
-            # cur.execute(
-            #     "SELECT first_name, last_name FROM users WHERE id = %s", user_id
-            # )
-            # user_data = cur.fetchall()
             user_data = update.message.from_user
-            first_name = user_data["first_name"]
-            last_name = user_data["last_name"]
+            first_name = user_data.first_name
+            last_name = user_data.last_name
+            cur.execute(
+                "SELECT profit, fee FROM invoice WHERE invoice_id = %s", (str(
+                    invoice_id),)
+            )
+            data = cur.fetchall()
+            profit_invoice = data[0][0]
+            fee_invoice = data[0][1]
             invoice_text_message = invoice_text(
-                invoice_details, first_name, last_name, user_id, user_username, last_price, fee, profit, invoice_id)
+                invoice_details, first_name, last_name, user_id, user_username, sub_price, fee_invoice, profit_invoice, invoice_id)
             inline_keyboard = [
                 [
                     InlineKeyboardButton(
@@ -585,7 +586,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=e,
+                text=str(e),
             )
     elif not photo:
         await context.bot.send_message(
@@ -771,10 +772,12 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result, first_day, last_day = get_sell_stats()
 
+    total_fee = result[3]
+
     print(result)
     total_paid_invoices = result[0]
     total_sales = result[1]
-    total_profit = total_paid_invoices * profit_amount
+    total_profit = result[2]
     if total_sales and total_profit:
         formatted_sales = format_with_commas(total_sales)
         formatted_profit = format_with_commas(total_profit)

@@ -26,7 +26,9 @@ def create_tables():
             created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status VARCHAR(50) DEFAULT 'Reviewing',
             is_paid VARCHAR(50) DEFAULT 'false',
-            price VARCHAR(255)
+            price VARCHAR(255),
+            profit VARCHAR(255),
+            fee VARCHAR(255)
         )"""
     )
     conn.commit()

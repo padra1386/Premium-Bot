@@ -53,7 +53,7 @@ def insert_data():
         )
         conn.commit()
 
-# Assuming 'conn' and 'cur' are already defined elsewhere and connected to your database
+# 'conn' and 'cur' are already defined elsewhere and connected to database
 
 
 # Usage:
@@ -70,20 +70,20 @@ cur.execute(
 )
 data = cur.fetchall()
 
-
+fee_amount = round_up_to_thousands(int(FEE_AMOUNT) * float(last_price))
 profit_amount = round_up_to_thousands(int(PROFIT_AMOUNT) * float(last_price))
 # Assign values to the respective variables
 for service in data:
     service_name, price, fee, profit = service
     if service_name == "three_m":
         three_m_price = round_up_to_thousands(price * float(last_price))
-        fee_amount = round_up_to_thousands(fee * float(last_price))
+        # fee_amount = round_up_to_thousands(fee * float(last_price))
         # profit_amount = round_up_to_thousands(profit * float(last_price))
     elif service_name == "nine_m":
         six_m_price = round_up_to_thousands(price * float(last_price))
-        fee_amount = round_up_to_thousands(fee * float(last_price))
+        # fee_amount = round_up_to_thousands(fee * float(last_price))
         # profit_amount = round_up_to_thousands(profit * float(last_price))
     elif service_name == "twelve_m":
         twelve_m_price = round_up_to_thousands(price * float(last_price))
-        fee_amount = round_up_to_thousands(fee * float(last_price))
+        # fee_amount = round_up_to_thousands(fee * float(last_price))
         # profit_amount = round_up_to_thousands(profit * float(last_price))
