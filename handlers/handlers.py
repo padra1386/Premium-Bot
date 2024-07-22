@@ -110,8 +110,18 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check if the user already exists
     cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
-    existing_user = cur.fetchone()
+    try:
+        # Execute some SQL commands
+        cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        existing_user = cur.fetchone()
 
+        # Commit the transaction if no errors
+        conn.commit()
+
+    except Exception as e:
+        # Rollback the transaction if an error occurs
+        conn.rollback()
+        print(f"Error executing query: {e}")
     if not existing_user:
         cur.execute(
             "INSERT INTO users (id, username, first_name, last_name) VALUES (%s, %s,%s,%s)",

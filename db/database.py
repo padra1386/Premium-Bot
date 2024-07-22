@@ -27,11 +27,19 @@ def create_tables():
             status VARCHAR(50) DEFAULT 'Reviewing',
             is_paid VARCHAR(50) DEFAULT 'false',
             price VARCHAR(255),
-            profit VARCHAR(255),
-            fee VARCHAR(255)
         )"""
     )
     conn.commit()
+    # Check if 'profit' column exists
+    cur.execute("PRAGMA table_info(invoice)")
+    columns = [column[1] for column in cur.fetchall()]
+
+    if 'profit' not in columns:
+        cur.execute("ALTER TABLE invoice ADD COLUMN profit VARCHAR(255)")
+
+    if 'fee' not in columns:
+        cur.execute("ALTER TABLE invoice ADD COLUMN fee VARCHAR(255)")
+
     cur.execute(
         """CREATE TABLE IF NOT EXISTS users (
             id TEXT,
