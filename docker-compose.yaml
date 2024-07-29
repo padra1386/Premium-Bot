@@ -1,44 +1,44 @@
 services:
 
-  db:
-    image: postgres
-    restart: always
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: ${db_name}
-      POSTGRES_USER: ${db_user}
-      PGUSER: ${db_user}
-      POSTGRES_PASSWORD: ${db_password}
-    healthcheck:
-      test: "pg_isready -h db"
-      interval: 3s
-      timeout: 5s
-      retries: 5
-  bot:
-    build: .
-    environment:
-    - REDIS_HOST=${redis}
-    - POSTGRES_HOST=${db_host}
-    - POSTGRES_DB=${db_name}
-    - POSTGRES_USER=${db_user}
-    - POSTGRES_PASSWORD=${db_password}
-    - POSTGRES_PORT=${db_port}
-    - TOKEN=${token}
-    - THREE_M_USD_PRICE=${three_m_usd_price}
-    - NINE_M_USD_PRICE=${nine_m_usd_price}
-    - TWELVE_M_USD_PRICE=${twelve_m_usd_price}
-    - FEE_AMOUNT=${fee_amount}
-    - PROFIT_AMOUNT=${profit_amount}
-    - ADMIN_CHAT_ID=${admin_chat_id}
-    - ADMIN_USERNAME=${admin_username}
-    - CHANELL_ID=${chanell_id}
-    - WEBSITE_ADDRESS=${website_address}
-    - CREDIT_CARD_NUMBER=${credit_card_number}
-    - CREDIT_CARD_OWNER=${credit_card_owner}
-    depends_on:
-      db:
-        condition: service_healthy
+  # db:
+  #   image: postgres
+  #   restart: always
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_DB: ${db_name}
+  #     POSTGRES_USER: ${db_user}
+  #     PGUSER: ${db_user}
+  #     POSTGRES_PASSWORD: ${db_password}
+  #   healthcheck:
+  #     test: "pg_isready -h db"
+  #     interval: 3s
+  #     timeout: 5s
+  #     retries: 5
+  # bot:
+  #   build: .
+  #   environment:
+  #   - REDIS_HOST=${redis}
+  #   - POSTGRES_HOST=${db_host}
+  #   - POSTGRES_DB=${db_name}
+  #   - POSTGRES_USER=${db_user}
+  #   - POSTGRES_PASSWORD=${db_password}
+  #   - POSTGRES_PORT=${db_port}
+  #   - TOKEN=${token}
+  #   - THREE_M_USD_PRICE=${three_m_usd_price}
+  #   - NINE_M_USD_PRICE=${nine_m_usd_price}
+  #   - TWELVE_M_USD_PRICE=${twelve_m_usd_price}
+  #   - FEE_AMOUNT=${fee_amount}
+  #   - PROFIT_AMOUNT=${profit_amount}
+  #   - ADMIN_CHAT_ID=${admin_chat_id}
+  #   - ADMIN_USERNAME=${admin_username}
+  #   - CHANELL_ID=${chanell_id}
+  #   - WEBSITE_ADDRESS=${website_address}
+  #   - CREDIT_CARD_NUMBER=${credit_card_number}
+  #   - CREDIT_CARD_OWNER=${credit_card_owner}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
   redis:
     image: redis
     ports:

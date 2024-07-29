@@ -20,7 +20,7 @@ from utilities.utils import (
     get_sell_stats,
     solar_to_gregorian,
     format_solar_date,
-    round_up_to_thousands
+    round_up_to_thousands,
 )
 from currencyapi import (
     three_m_price,
@@ -37,9 +37,12 @@ from utilities.texts import (
     FAQ_FULL_TEXT,
     MY_PURCHASES_TEXT,
     GO_BACK_TEXT,
-    THREE_M_SUB_TEXT,
-    SIX_M_SUB_TEXT,
-    TWELVE_M_SUB_TEXT,
+    THREE_M_CHOICE,
+    SIX_M_CHOICE,
+    TWELVE_M_CHOICE,
+    # THREE_M_SUB_TEXT,
+    # SIX_M_SUB_TEXT,
+    # TWELVE_M_SUB_TEXT,
     PENDING_APPROVAL_TEXT,
     APPROVED_TEXT,
     CANCELLED_TEXT,
@@ -48,7 +51,7 @@ from utilities.texts import (
     CHOOSE_USERNAME_ERROR_TEXT,
     SUB_HELP_TEXT,
     WELCOME_TEXT,
-    CHOOSE_OPTION_TEXT,
+    # CHOOSE_OPTION_TEXT,
     INVALID_OPTION_TEXT,
     FAILED_UPDATE_STATUS_TEXT,
     USERNAME_LIMITS_TEXT,
@@ -63,6 +66,10 @@ from utilities.texts import (
     users_stat_text,
     invoice_text,
     user_invoice_text,
+    choose_sub_option,
+    three_m_text,
+    six_m_text,
+    twelve_m_text,
     USERS_STATS,
     SELL_STATS,
     PHOTO_SENT_SUCCESSFULLY,
@@ -81,6 +88,14 @@ from redis_conn.redis_connection import redis_conn
 from redis_conn.states import set_user_state, get_user_state, BotState
 from redis_conn.session import set_session, get_session, delete_session
 from datetime import datetime
+
+
+three_m_invoice_price = int(three_m_price) + \
+    int(profit_amount) + int(fee_amount)
+six_m_invoice_price = int(six_m_price) + \
+    int(profit_amount) + int(fee_amount)
+twelve_m_invoice_price = int(twelve_m_price) + \
+    int(profit_amount) + int(fee_amount)
 
 
 def push_menu(user_id: str, menu_function):
@@ -109,10 +124,10 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_last_name = user_data.last_name
 
     # Check if the user already exists
-    cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+    cur.execute("SELECT id FROM users WHERE id = ?", (user_id,))
     try:
         # Execute some SQL commands
-        cur.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+        cur.execute("SELECT id FROM users WHERE id = ?", (user_id,))
         existing_user = cur.fetchone()
 
         # Commit the transaction if no errors
@@ -124,7 +139,7 @@ async def add_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"Error executing query: {e}")
     if not existing_user:
         cur.execute(
-            "INSERT INTO users (id, username, first_name, last_name) VALUES (%s, %s,%s,%s)",
+            "INSERT INTO users (id, username, first_name, last_name) VALUES (?, ?,?,?)",
             (user_id, user_username, user_first_name, user_last_name),
         )
         conn.commit()
@@ -182,6 +197,14 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     last_message_id = get_session(user_id, "last_message")
     if user_state == BotState.BUY_PREMIUM:
         if get_session(user_id, "awaiting_username") == "true":
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        text=GO_BACK_TEXT, callback_data="go_back_cancelled"
+                    ),
+                ],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
             if text == BUY_FOR_SELF_TEXT:
                 if not user_data.username:
                     await context.bot.send_message(
@@ -195,10 +218,10 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     set_user_state(user_id, BotState.SUBS_LIST)
 
                     # Remove the keyboard
-                    await context.bot.delete_message(
-                        chat_id=update.effective_chat.id,
-                        message_id=int(last_message_id),
-                    )
+                    # await context.bot.delete_message(
+                    #     chat_id=update.effective_chat.id,
+                    #     message_id=int(last_message_id),
+                    # )
                     await subs_list(update, context)
             else:
                 if is_valid_username(sanitize_username(text)):
@@ -219,6 +242,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     await context.bot.send_message(
                         chat_id=update.effective_chat.id,
                         text=USERNAME_LIMITS_TEXT,
+                        reply_markup=reply_markup
                     )
         else:
             # Handle other text messages here
@@ -231,23 +255,25 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     push_menu(user_id, buy_sub)
     user_state = get_user_state(user_id)
+    username = get_session(user_id, "entered_username")
 
     subs_list_keys = [
         [
-            InlineKeyboardButton(text=THREE_M_SUB_TEXT,
+            InlineKeyboardButton(text=three_m_text(three_m_invoice_price),
                                  callback_data="sub:3m"),
         ],
         [
-            InlineKeyboardButton(text=SIX_M_SUB_TEXT, callback_data="sub:6m"),
+            InlineKeyboardButton(text=six_m_text(
+                six_m_invoice_price), callback_data="sub:6m"),
         ],
         [
-            InlineKeyboardButton(text=TWELVE_M_SUB_TEXT,
+            InlineKeyboardButton(text=twelve_m_text(twelve_m_invoice_price),
                                  callback_data="sub:12m"),
         ],
     ]
     markup = InlineKeyboardMarkup(subs_list_keys)
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=CHOOSE_OPTION_TEXT, reply_markup=markup
+        chat_id=update.effective_chat.id, text=choose_sub_option(username=username), reply_markup=markup
     )
 
 
@@ -256,27 +282,23 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     data = query.data
-    three_m_invoice_price = int(three_m_price) + \
-        int(profit_amount) + int(fee_amount)
-    six_m_invoice_price = int(six_m_price) + \
-        int(profit_amount) + int(fee_amount)
-    twelve_m_invoice_price = int(twelve_m_price) + \
-        int(profit_amount) + int(fee_amount)
 
     if get_user_state(user_id) == BotState.SUBS_LIST:
         if data == "sub:3m":
-            set_session(user_id, "sub_choice", THREE_M_SUB_TEXT)
+            set_session(user_id, "sub_choice",
+                        THREE_M_CHOICE)
             set_session(user_id, "sub_price", str(
                 three_m_invoice_price))  # Store as string
             set_session(user_id, 'profit_amount', int(profit_amount))
         elif data == "sub:6m":
-            set_session(user_id, "sub_choice", SIX_M_SUB_TEXT)
+            set_session(user_id, "sub_choice", SIX_M_CHOICE)
             set_session(user_id, "sub_price", str(
                 six_m_invoice_price))  # Store as string
             set_session(user_id, 'profit_amount', int(profit_amount))
 
         elif data == "sub:12m":
-            set_session(user_id, "sub_choice", TWELVE_M_SUB_TEXT)
+            set_session(user_id, "sub_choice",
+                        TWELVE_M_CHOICE)
             set_session(user_id, "sub_price", str(
                 twelve_m_invoice_price))  # Store as string
             set_session(user_id, 'profit_amount', int(profit_amount))
@@ -366,14 +388,14 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Fetch the invoice to check if it exists
         cur.execute(
-            "SELECT id, sub FROM invoice WHERE invoice_id = %s", (invoice_id,))
+            "SELECT id, sub FROM invoice WHERE invoice_id = ?", (invoice_id,))
         result = cur.fetchall()
         user_chat_id, sub_name = result[0]
 
         if result:
             # Update the status in the db
             cur.execute(
-                "UPDATE invoice SET status = %s WHERE invoice_id = %s",
+                "UPDATE invoice SET status = ? WHERE invoice_id = ?",
                 (new_status, invoice_id),
             )
             conn.commit()
@@ -392,7 +414,7 @@ async def update_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             inline_keyboard = []
             if new_status == "Pay Approved":
                 cur.execute(
-                    "UPDATE invoice SET is_paid = %s WHERE invoice_id = %s",
+                    "UPDATE invoice SET is_paid = ? WHERE invoice_id = ?",
                     ("true", invoice_id),
                 )
                 conn.commit()
@@ -530,7 +552,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if user_username:
                 cur.execute(
-                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price, profit, fee) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price, profit, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (user_id, user_username, user_sub, default_sub_status,
                      invoice_id, str(sub_price), str(profit_amount), str(fee_amount))
                 )
@@ -547,7 +569,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             first_name = user_data.first_name
             last_name = user_data.last_name
             cur.execute(
-                "SELECT profit, fee FROM invoice WHERE invoice_id = %s", (str(
+                "SELECT profit, fee FROM invoice WHERE invoice_id = ?", (str(
                     invoice_id),)
             )
             data = cur.fetchall()
@@ -664,7 +686,7 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user_data["id"]
 
     cur.execute(
-        "SELECT username, sub, created, status FROM invoice WHERE id = %s ORDER BY created DESC",
+        "SELECT username, sub, created, status FROM invoice WHERE id = ? ORDER BY created DESC",
         (str(user_id),),
     )
     user_data = cur.fetchall()
@@ -682,10 +704,10 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"""
 💢 درخواست: {sub}
 👤 برای ایدی تلگرام : @{username}
-📅 ساخته شده : {format_solar_date(gregorian_to_solar(created))}
+📅 ساخته شده : {format_solar_date(gregorian_to_solar(datetime.strptime(created, "%Y-%m-%d %H:%M:%S")))}
 ⭐️ وضعیت : {status_translation.get(status)}
                 """
-                # f"- @{username}: اشتراک {sub} (تاریخ ایجاد: {created.strftime('%Y-%m-%d %H:%M:%S')}) - وضعیت: {status_translation.get(status, 'نامشخص')}"
+                # f"- @{username}: اشتراک {sub} (تاریخ ایجاد: {created.strftime('%Y-%m-%d %H:%M:?')}) - وضعیت: {status_translation.get(status, 'نامشخص')}"
                 for username, sub, created, status in user_data
             ]
         )

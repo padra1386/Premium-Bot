@@ -1,5 +1,6 @@
 import re
 import math
+# Assuming your dbconn is correctly configured for SQLite
 from db.dbconn import conn, cur
 from convertdate import persian
 from telegram import ReplyKeyboardRemove
@@ -90,25 +91,23 @@ def get_total_users():
     cur.execute('SELECT COUNT(*) FROM users')
     return cur.fetchone()[0]
 
+
 # Function to get the number of new users today
-
-
 def get_daily_new_users():
     cur.execute('''
     SELECT COUNT(*)
     FROM users
-    WHERE DATE(created) = CURRENT_DATE
+    WHERE DATE(created) = DATE('now', 'localtime')
     ''')
     return cur.fetchone()[0]
 
+
 # Function to get the number of new users this week
-
-
 def get_weekly_new_users():
     cur.execute('''
     SELECT COUNT(*)
     FROM users
-    WHERE DATE(created) >= CURRENT_DATE - INTERVAL '7 days'
+    WHERE DATE(created) >= DATE('now', '-7 days', 'localtime')
     ''')
     return cur.fetchone()[0]
 
@@ -152,12 +151,12 @@ def get_sell_stats():
     SUM(CAST(price AS DECIMAL)) AS total_price,
     SUM(CAST(profit AS DECIMAL)) AS total_profit,
     SUM(CAST(fee AS DECIMAL)) AS total_fee
-FROM 
+    FROM 
     invoice
-WHERE 
+    WHERE 
     is_paid = 'true'
-    AND created >= %s
-    AND created <= %s;
+    AND created >= ?
+    AND created <= ?;
     '''
     cur.execute(main_query, (first_day_of_month_gregorian_str,
                 last_day_of_month_gregorian_str))

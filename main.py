@@ -28,9 +28,7 @@ from handlers.handlers import (
     faq_callback,
 )
 from utilities.texts import (
-    THREE_M_SUB_TEXT,
-    SIX_M_SUB_TEXT,
-    TWELVE_M_SUB_TEXT,
+
     BUY_FOR_SELF_TEXT,
     BUY_PREMIUM_TEXT,
     FAQ_TEXT,

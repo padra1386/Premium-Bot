@@ -47,14 +47,14 @@ def insert_data():
     for service_name, price, fee, profit in services_data:
         cur.execute(
             """
-            INSERT INTO services (service_name, price, fee, profit) VALUES (%s, %s, %s, %s)
+            INSERT INTO services (service_name, price, fee, profit) VALUES (?, ?, ?, ?)
             """,
             (service_name, price, fee, profit),
         )
         conn.commit()
 
-# 'conn' and 'cur' are already defined elsewhere and connected to database
 
+# 'conn' and 'cur' are already defined elsewhere and connected to database
 
 # Usage:
 insert_data_if_empty()
