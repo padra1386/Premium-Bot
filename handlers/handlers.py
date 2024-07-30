@@ -79,9 +79,10 @@ from utilities.texts import (
     REDIS_ERROR,
     ADMIN_LINK,
     ABOUT_US_BTN_TEXT,
-    ABOUT_US_TEXT
+    ABOUT_US_TEXT,
+    CHANELL_TEXT
 )
-from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, ADMIN_USERNAME
+from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, ADMIN_USERNAME, CHANELL_ID
 import uuid
 from db.dbconn import conn, cur
 from redis_conn.redis_connection import redis_conn
@@ -258,6 +259,7 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = get_session(user_id, "entered_username")
 
     subs_list_keys = [
+
         [
             InlineKeyboardButton(text=three_m_text(three_m_invoice_price),
                                  callback_data="sub:3m"),
@@ -269,6 +271,14 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton(text=twelve_m_text(twelve_m_invoice_price),
                                  callback_data="sub:12m"),
+        ],
+        [
+            InlineKeyboardButton(
+                text=GO_BACK_TEXT, callback_data="go_back_cancelled"
+            ),
+            InlineKeyboardButton(text="👤 ارتباط با پشتبانی",
+                                 url=f"https://t.me/{ADMIN_USERNAME}"),
+
         ],
     ]
     markup = InlineKeyboardMarkup(subs_list_keys)
@@ -628,19 +638,28 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
+    top_buttons = [
+        [
+            InlineKeyboardButton(
+                text=CHANELL_TEXT, url=f'https://t.me/{CHANELL_ID}'),
+            InlineKeyboardButton(text=ADMIN_PANEL_TEXT, url=ADMIN_LINK)
+
+        ]
+    ]
+
+    # Create the FAQ buttons
+    faq_buttons = [
         [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
         for i, q in enumerate(FAQ_FULL_TEXT)
     ]
-    keyboard.append(
-        [
-            InlineKeyboardButton(
-                text=ADMIN_PANEL_TEXT, url=ADMIN_LINK
-            ),
-            InlineKeyboardButton(
-                GO_BACK_TEXT, callback_data="go_back_cancelled"),
-        ],
-    )
+
+    # Create the Go Back button
+    go_back_button = [
+        [InlineKeyboardButton(GO_BACK_TEXT, callback_data="go_back_cancelled")]
+    ]
+
+    # Combine all the buttons
+    keyboard = top_buttons + faq_buttons + go_back_button
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(FAQ_TEXT, reply_markup=reply_markup)
