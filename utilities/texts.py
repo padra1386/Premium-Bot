@@ -7,7 +7,7 @@ from currencyapi import (
 from utilities.utils import format_solar_date, format_with_commas
 from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS, CREDIT_CARD_NUMBER, CREDIT_CARD_OWNER
 
-WELCOME_TEXT = "به ایروپرمیوم خوش آمدید"
+WELCOME_TEXT = "خوش آمدید"
 START_TEXT = "start"
 BUY_PREMIUM_TEXT = "🛍️ تلگرام پرمیوم"
 BUY_FOR_SELF_TEXT = "🙋‍♂️ خرید برای خودم"
@@ -42,7 +42,7 @@ CANCELLED_TEXT = "🚫  لغو شده"
 PAY_APPROVED_TEXT = "💳 تراکنش تایید شده"
 CHOOSE_USERNAME_ERROR_TEXT = "⚠️ لطفاً برای حساب خود ایدی تلگرام انتخاب کنید"
 SUB_HELP_TEXT = f"""
-از طریق دکمه منو میتوانید حساب خود را پرمیوم کنید یا میتوانید آیدی تلگرام مورد نظر را برای ربات بفرستید :
+اگر میخواهید تلگرام خود را پرمیوم کنید از طریق دکمه منو اکانت را برای ربات به اشتراک بگذارید یا میتوانید آیدی اکانت دیگری را ارسال کنید
 
 💡 نمونه ایدی تلگرام : @{ADMIN_USERNAME}
 """
@@ -51,7 +51,7 @@ INVALID_OPTION_TEXT = "❗️ گزینه نامعتبر لطفا دوباره ت
 FAILED_UPDATE_STATUS_TEXT = "❗️ وضعیت به‌روزرسانی نشد."
 ERROR_SENDING_PHOTO = "❗️ هنگام ارسال عکس برای ادمین خطایی رخ داد."
 UNKNOWN_TEXT = "نامشخص"
-NO_SUB_TEXT = "🚫 شما اشتراکی ندارید."
+NO_SUB_TEXT = "🚫 سفارشی ثبت نشده است"
 # USERNAME_LIMITS_TEXT = "⚠️ لطفا یوزر نیم را به درستی وارد کنید. یک یوزر نیم درست شامل : حروف انگلیسی A تا Z ، اعداد 0 تا 9 ، آندرسکور( _ )، و ۵ تا ۳۲ حرف است"
 STATUS_UPDATED_TEXT = "وضعیت تغییر کرد به : "
 # change
@@ -71,11 +71,11 @@ ABOUT_US_BTN_TEXT = "ℹ️ درباره ما"
 ABOUT_US_TEXT = f"""
 با ایروپرمیوم تحریم های تلگرام رو با خیال راحت دور بزنید
 
- 📢ادرس کانال ما : @{CHANELL_ID}
+ 📢 کانال : @{CHANELL_ID}
 
- 👤ادرس ادمین ما : @{ADMIN_USERNAME}
+ 👤 ایدی ادمین : @{ADMIN_USERNAME}
 
- 🌐ادرس وبسایت ما : {WEBSITE_ADDRESS}
+ 🌐 وبسایت ما : {WEBSITE_ADDRESS}
 
 """
 NOT_PHOTO_ERROR = "❗️ خطا، لطفا فقط اسکرین شات واریزی را برای ربات ارسال نمایید"
@@ -181,20 +181,41 @@ def users_stat_text(total_users, daily_new_users, weekly_new_users, user_w_paid_
 
 
 def invoice_text(invoice_details, first_name, last_name, user_id, user_username, fee_amount, profit_amount, invoice_id):
-    text = f"""**فاکتور**
 
-درخواست : {invoice_details.get('title', 'N/A')}
-نام : {first_name}
-نام خانوادگی : {last_name}
-ایدی کاربر : {user_id}
-ایدی تلگرام اصلی : @{user_username}
-ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
-قیمت تتر : {format_with_commas(int(float(last_price)))}
-قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
-کارمزد فاکتور : {format_with_commas(int(fee_amount)) }
-سود فاکتور : {format_with_commas(int(profit_amount))}
-شماره فاکتور : {invoice_id}"""
-    return text
+    text = f"""📰 فاکتور جدید
+
+🧾 شماره فاکتور : {invoice_id}
+📋 درخواست : {invoice_details.get('title', 'N/A')}
+👤 نام : {first_name}
+👥 نام خانوادگی : {last_name}
+🆔 ایدی کاربر : {user_id}
+🔗 ایدی تلگرام اصلی : @{user_username}
+🔍 ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
+
+💲 قیمت تتر : {format_with_commas(int(float(last_price)))}
+💰 قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
+💸 کارمزد فاکتور : {format_with_commas(int(fee_amount))}
+📈 سود فاکتور : {format_with_commas(int(profit_amount))}
+
+"""
+
+    rtl_text = f"""\u200F📰 فاکتور جدید
+
+\u200F🧾 شماره فاکتور : {invoice_id}
+\u200F📋 درخواست : {invoice_details.get('title', 'N/A')}
+\u200F👤 نام : {first_name}
+\u200F👥 نام خانوادگی : {last_name}
+\u200F🆔 ایدی کاربر : {user_id}
+\u200F🔗 ایدی تلگرام اصلی : @{user_username}
+\u200F🔍 ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
+
+\u200F💲 قیمت تتر : {format_with_commas(int(float(last_price)))}
+\u200F💰 قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
+\u200F💸 کارمزد فاکتور : {format_with_commas(int(fee_amount))}
+\u200F📈 سود فاکتور : {format_with_commas(int(profit_amount))}
+
+"""
+    return rtl_text
 
 
 def user_invoice_text(invoice_title, formatted_price, invoice_username):
