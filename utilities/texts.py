@@ -1,11 +1,14 @@
+import jdatetime
+
 from currencyapi import (
     three_m_price,
     six_m_price,
     twelve_m_price,
     last_price
 )
-from utilities.utils import format_solar_date, format_with_commas
+from utilities.utils import format_solar_date, format_with_commas, get_solar_date
 from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS, CREDIT_CARD_NUMBER, CREDIT_CARD_OWNER
+import datetime
 
 WELCOME_TEXT = "خوش آمدید"
 START_TEXT = "start"
@@ -175,12 +178,30 @@ def format_message_text(result, first_day, last_day, is_current=False):
         formatted_sales = 0
         formatted_profit = 0
 
-    period = "ماه جاری" if is_current else f"از {first_day} تا {last_day}"
+    year = first_day.year
+    month = first_day.month
+
+    now_month = jdatetime.datetime.now().month
+
+
+    # Create a list for Persian month names
+    persian_month_names = [
+        'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+        'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+    ]
+
+    # Format the Persian date
+    persian_date_str = f'{persian_month_names[month - 1]} {year}'
+    if month == now_month:
+        period = f"{persian_date_str} (ماه جاری)"
+    else:
+        period = f"{persian_date_str}"
     message_text = f"""
-    آمار فروش {period}:
-    تعداد فاکتورهای پرداخت شده: {total_paid_invoices}
-    مجموع فروش: {formatted_sales}
-    مجموع سود: {formatted_profit}
+    
+    آمار فروش {period} :
+    تعداد فاکتورهای پرداخت شده : {total_paid_invoices}
+    مجموع فروش : {formatted_sales}
+    مجموع سود : {formatted_profit}
     """
     return message_text
 

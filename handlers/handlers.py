@@ -22,7 +22,8 @@ from utilities.utils import (
     format_solar_date,
     round_up_to_thousands,
     generate_inline_keyboard,
-    get_available_months
+    get_available_months,
+    get_solar_date
 )
 from currencyapi import (
     three_m_price,
@@ -92,6 +93,7 @@ from redis_conn.redis_connection import redis_conn
 from redis_conn.states import set_user_state, get_user_state, BotState
 from redis_conn.session import set_session, get_session, delete_session
 from datetime import datetime
+import jdatetime
 
 
 three_m_invoice_price = int(three_m_price) + \
@@ -538,6 +540,8 @@ async def go_back_handle(
         await start(update, context)
 
 
+
+
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     text = update.effective_message.text
@@ -565,8 +569,8 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             if user_username:
                 cur.execute(
-                    "INSERT INTO invoice (id, username, sub, status, invoice_id, price, profit, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (user_id, user_username, user_sub, default_sub_status,
+                    "INSERT INTO invoice (id, username, sub, created, status, invoice_id, price, profit, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (user_id, user_username, user_sub, get_solar_date(), default_sub_status,
                      invoice_id, str(sub_price), str(profit_amount), str(fee_amount))
                 )
                 conn.commit()
@@ -826,24 +830,31 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = ""
 
+    available_months = get_available_months()
+
     # Get current month statistics
     current_date = datetime.now()
     current_solar_date = gregorian_to_solar(current_date)
-    current_solar_year, current_solar_month, _ = map(
-        int, current_solar_date.split('-'))
-    result, first_day, last_day = get_sell_stats(
-        current_solar_year, current_solar_month)
+    # current_solar_year, current_solar_month, _ = map(
+    #     int, current_solar_date.split('-'))
+    # result, first_day, last_day = get_sell_stats(
+    #     current_solar_year, current_solar_month)
 
-    message_text += format_message_text(result,
-                                        first_day, last_day, is_current=True)
+    for i in available_months:
+        year = int(i.split("-")[0])
+        month = int(i.split("-")[1])
+        result, first_day, last_day = get_sell_stats(
+            year, month)
+
+        message_text += format_message_text(result,
+                                        first_day, last_day)
 
     # Get previous months with invoices
-    available_months = get_available_months()
 
-    for month in available_months:
-        year, month_num = map(int, month.split('-'))
-        result, first_day, last_day = get_sell_stats(year, month_num)
-        message_text += format_message_text(result, first_day, last_day)
+    # for month in available_months:
+    #     year, month_num = map(int, month.split('-'))
+    #     result, first_day, last_day = get_sell_stats(year, month_num)
+    #     message_text += format_message_text(result, first_day, last_day)
 
     await context.bot.send_message(update.effective_chat.id, message_text)
 

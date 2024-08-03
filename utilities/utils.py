@@ -7,7 +7,8 @@ from telegram import ReplyKeyboardRemove
 from telegram.ext import ContextTypes
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
+import calendar
+import jdatetime
 
 def push_menu(context, menu_function):
     if "menu_stack" not in context.user_data:
@@ -128,17 +129,46 @@ def sanitize_username(username):
     return username.replace('@', '')
 
 
+def get_available_months():
+    query = '''
+    SELECT DISTINCT 
+    strftime('%Y-%m', created) AS year_month
+    FROM invoice
+    WHERE is_paid = 'true'
+    ORDER BY year_month DESC;
+    '''
+    cur.execute(query)
+    results = cur.fetchall()
+
+    # Filter out the current month if it appears
+    current_date = datetime.now()
+    current_month = current_date.strftime('%Y-%m')
+
+    months = [row[0] for row in results]
+
+
+    return months
+
+
 def get_sell_stats(year, month):
     # Convert year and month to the first and last day of the month
     first_day = datetime(year, month, 1)
-    last_day = (first_day + timedelta(days=32)
-                ).replace(day=1) - timedelta(days=1)
+    last_day = datetime(year, month, calendar.monthrange(year, month)[1])
+    # first_day_string = f"{first_day[0]}-{first_day[1]}-{first_day[2]}"
+    # last_day_string = f"{last_day[0]}-{last_day[1]}-{last_day[2]}"
 
-    first_day_solar = gregorian_to_solar(first_day)
-    last_day_solar = gregorian_to_solar(last_day)
+    # first_day_dt = datetime(first_day[0], first_day[1], first_day[2])
+    # last_day_dt = datetime(last_day[0], last_day[1], last_day[2])
 
+
+    # first_day_dt = datetime(first_day[0], first_day[1], first_day[2])
+    # last_day_dt = datetime(last_day[0], last_day[1], last_day[2])
+
+    # Formatting the datetime objects as strings
     first_day_str = first_day.strftime('%Y-%m-%d 00:00:00')
     last_day_str = last_day.strftime('%Y-%m-%d 23:59:59')
+
+
 
     main_query = '''
     SELECT 
@@ -156,7 +186,7 @@ def get_sell_stats(year, month):
     cur.execute(main_query, (first_day_str, last_day_str))
     result = cur.fetchone()
 
-    return result, first_day_solar, last_day_solar
+    return result, first_day, last_day
 
 
 def format_solar_date(date_str):
@@ -166,28 +196,6 @@ def format_solar_date(date_str):
     return f"{year}-{month}-{day}"
 
 
-def get_available_months():
-    query = '''
-    SELECT DISTINCT 
-    strftime('%Y-%m', created) AS year_month
-    FROM invoice
-    WHERE is_paid = 'true'
-    ORDER BY year_month DESC;
-    '''
-    cur.execute(query)
-    results = cur.fetchall()
-
-    # Filter out the current month if it appears
-    current_date = datetime.now()
-    current_month = current_date.strftime('%Y-%m')
-
-    months = [row[0] for row in results if row[0] != current_month]
-    print(results)
-    print(months)
-    return months
-
-
-get_available_months()
 
 
 def generate_inline_keyboard():
@@ -208,3 +216,8 @@ def generate_inline_keyboard():
         current_month_name, callback_data='current')])
 
     return InlineKeyboardMarkup(keyboard)
+
+
+def get_solar_date():
+    now = jdatetime.datetime.now()
+    return now.strftime('%Y-%m-%d %H:%M:%S')
