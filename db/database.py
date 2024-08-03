@@ -18,7 +18,7 @@ def create_tables():
             id TEXT,
             username TEXT,
             sub TEXT,
-            created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created TEXT,
             status TEXT DEFAULT 'Reviewing',
             is_paid TEXT DEFAULT 'false',
             price TEXT,
