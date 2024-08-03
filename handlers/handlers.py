@@ -540,8 +540,6 @@ async def go_back_handle(
         await start(update, context)
 
 
-
-
 async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     text = update.effective_message.text
@@ -728,16 +726,16 @@ async def my_subs(update: Update, context: ContextTypes.DEFAULT_TYPE):
         subs_list = "\n".join(
             [
                 f"""
-💢 درخواست: {sub}
+💢 سفارش: {sub}
 👤 برای ایدی تلگرام : @{username}
-📅 ساخته شده : {format_solar_date(gregorian_to_solar(datetime.strptime(created, "%Y-%m-%d %H:%M:%S")))}
+📅 ساخته شده : {datetime.strptime(created, '%Y-%m-%d %H:%M:%S').strftime('%d-%m-%Y')}
 ⭐️ وضعیت : {status_translation.get(status)}
                 """
                 # f"- @{username}: اشتراک {sub} (تاریخ ایجاد: {created.strftime('%Y-%m-%d %H:%M:?')}) - وضعیت: {status_translation.get(status, 'نامشخص')}"
                 for username, sub, created, status in user_data
             ]
         )
-        response_message = f"اشتراک‌های شما:\n{subs_list}"
+        response_message = f"سفارشات شما :\n{subs_list}"
     else:
         response_message = NO_SUB_TEXT
 
@@ -847,13 +845,13 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             year, month)
 
         message_text += format_message_text(result,
-                                        first_day, last_day)
+                                            first_day, last_day)
 
     keys = [
-            [
-                KeyboardButton(text=GO_BACK_TEXT),
-            ]
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
         ]
+    ]
     markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
 
     # Get previous months with invoices
@@ -879,6 +877,7 @@ async def sell_variables(update: Update, context: ContextTypes.DEFAULT_TYPE):
         THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, PROFIT_AMOUNT)
 
     await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
+
 
 async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
