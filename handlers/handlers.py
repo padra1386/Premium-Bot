@@ -21,6 +21,8 @@ from utilities.utils import (
     solar_to_gregorian,
     format_solar_date,
     round_up_to_thousands,
+    generate_inline_keyboard,
+    get_available_months
 )
 from currencyapi import (
     three_m_price,
@@ -70,6 +72,7 @@ from utilities.texts import (
     three_m_text,
     six_m_text,
     twelve_m_text,
+    format_message_text,
     USERS_STATS,
     SELL_STATS,
     PHOTO_SENT_SUCCESSFULLY,
@@ -821,48 +824,28 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    result, first_day, last_day = get_sell_stats()
+    message_text = ""
 
-    total_fee = result[3]
+    # Get current month statistics
+    current_date = datetime.now()
+    current_solar_date = gregorian_to_solar(current_date)
+    current_solar_year, current_solar_month, _ = map(
+        int, current_solar_date.split('-'))
+    result, first_day, last_day = get_sell_stats(
+        current_solar_year, current_solar_month)
 
-    print(result)
-    total_paid_invoices = result[0]
-    total_sales = result[1]
-    total_profit = result[2]
-    if total_sales and total_profit:
-        formatted_sales = format_with_commas(total_sales)
-        formatted_profit = format_with_commas(total_profit)
-    else:
-        formatted_sales = 0
-        formatted_profit = 0
+    message_text += format_message_text(result,
+                                        first_day, last_day, is_current=True)
 
-    keys = [
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ]
-    ]
+    # Get previous months with invoices
+    available_months = get_available_months()
 
-    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
+    for month in available_months:
+        year, month_num = map(int, month.split('-'))
+        result, first_day, last_day = get_sell_stats(year, month_num)
+        message_text += format_message_text(result, first_day, last_day)
 
-    message_text = sale_stats_text(
-        first_day, last_day, total_paid_invoices, formatted_sales, formatted_profit)
-
-    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
-
-
-async def sell_variables(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    keys = [
-        [
-            KeyboardButton(text=GO_BACK_TEXT),
-        ]
-    ]
-
-    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
-    message_text = sale_variables_text(
-        THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, PROFIT_AMOUNT)
-
-    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
+    await context.bot.send_message(update.effective_chat.id, message_text)
 
 
 async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):

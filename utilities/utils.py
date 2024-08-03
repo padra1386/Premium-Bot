@@ -5,7 +5,8 @@ from db.dbconn import conn, cur
 from convertdate import persian
 from telegram import ReplyKeyboardRemove
 from telegram.ext import ContextTypes
-from datetime import datetime
+from datetime import datetime, timedelta
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def push_menu(context, menu_function):
@@ -127,23 +128,17 @@ def sanitize_username(username):
     return username.replace('@', '')
 
 
-def get_sell_stats():
-    current_date = datetime.now()
-    current_solar_date = gregorian_to_solar(current_date)
+def get_sell_stats(year, month):
+    # Convert year and month to the first and last day of the month
+    first_day = datetime(year, month, 1)
+    last_day = (first_day + timedelta(days=32)
+                ).replace(day=1) - timedelta(days=1)
 
-    current_solar_year, current_solar_month, current_solar_day = map(
-        int, current_solar_date.split('-'))
+    first_day_solar = gregorian_to_solar(first_day)
+    last_day_solar = gregorian_to_solar(last_day)
 
-    first_day_of_solar_month = f"{current_solar_year:04d}-{current_solar_month:02d}-01"
-    last_day_of_solar_month = f"{current_solar_year:04d}-{current_solar_month:02d}-{current_solar_day:02d}"
-
-    first_day_of_month_gregorian = solar_to_gregorian(
-        current_solar_year, current_solar_month, 1)
-    last_day_of_month_gregorian = solar_to_gregorian(
-        current_solar_year, current_solar_month, current_solar_day)
-
-    first_day_of_month_gregorian_str = f"{first_day_of_month_gregorian[0]:04d}-{first_day_of_month_gregorian[1]:02d}-{first_day_of_month_gregorian[2]:02d} 00:00:00"
-    last_day_of_month_gregorian_str = f"{last_day_of_month_gregorian[0]:04d}-{last_day_of_month_gregorian[1]:02d}-{last_day_of_month_gregorian[2]:02d} 23:59:59"
+    first_day_str = first_day.strftime('%Y-%m-%d 00:00:00')
+    last_day_str = last_day.strftime('%Y-%m-%d 23:59:59')
 
     main_query = '''
     SELECT 
@@ -158,11 +153,10 @@ def get_sell_stats():
     AND created >= ?
     AND created <= ?;
     '''
-    cur.execute(main_query, (first_day_of_month_gregorian_str,
-                last_day_of_month_gregorian_str))
+    cur.execute(main_query, (first_day_str, last_day_str))
     result = cur.fetchone()
 
-    return result, first_day_of_solar_month, last_day_of_solar_month
+    return result, first_day_solar, last_day_solar
 
 
 def format_solar_date(date_str):
@@ -170,3 +164,47 @@ def format_solar_date(date_str):
     day, month, year = date_str.split('-')
     # Rearrange into the desired format
     return f"{year}-{month}-{day}"
+
+
+def get_available_months():
+    query = '''
+    SELECT DISTINCT 
+    strftime('%Y-%m', created) AS year_month
+    FROM invoice
+    WHERE is_paid = 'true'
+    ORDER BY year_month DESC;
+    '''
+    cur.execute(query)
+    results = cur.fetchall()
+
+    # Filter out the current month if it appears
+    current_date = datetime.now()
+    current_month = current_date.strftime('%Y-%m')
+
+    months = [row[0] for row in results if row[0] != current_month]
+    print(results)
+    print(months)
+    return months
+
+
+get_available_months()
+
+
+def generate_inline_keyboard():
+    available_months = get_available_months()
+    keyboard = []
+    for month in available_months:
+        year, month_num = map(int, month.split('-'))
+        solar_date = gregorian_to_solar(datetime(year, month_num, 1))
+        solar_year, solar_month, _ = map(int, solar_date.split('-'))
+        solar_month_name = f"ماه {solar_month:02d} {solar_year}"
+        keyboard.append([InlineKeyboardButton(
+            solar_month_name, callback_data=month)])
+
+    current_solar_date = gregorian_to_solar(datetime.now())
+    solar_year, solar_month, _ = map(int, current_solar_date.split('-'))
+    current_month_name = f"ماه جاری {solar_year}"
+    keyboard.append([InlineKeyboardButton(
+        current_month_name, callback_data='current')])
+
+    return InlineKeyboardMarkup(keyboard)

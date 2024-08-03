@@ -164,6 +164,27 @@ def sale_stats_text(first_day, last_day, total_paid_invoices, formatted_sales, p
     return text
 
 
+def format_message_text(result, first_day, last_day, is_current=False):
+    total_paid_invoices = result[0]
+    total_sales = result[1]
+    total_profit = result[2]
+    if total_sales and total_profit:
+        formatted_sales = format_with_commas(total_sales)
+        formatted_profit = format_with_commas(total_profit)
+    else:
+        formatted_sales = 0
+        formatted_profit = 0
+
+    period = "ماه جاری" if is_current else f"از {first_day} تا {last_day}"
+    message_text = f"""
+    آمار فروش {period}:
+    تعداد فاکتورهای پرداخت شده: {total_paid_invoices}
+    مجموع فروش: {formatted_sales}
+    مجموع سود: {formatted_profit}
+    """
+    return message_text
+
+
 def users_stat_text(total_users, daily_new_users, weekly_new_users, user_w_paid_invoice):
     text = f"""
 📊 آمار کاربران
