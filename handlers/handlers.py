@@ -849,6 +849,13 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         message_text += format_message_text(result,
                                         first_day, last_day)
 
+    keys = [
+            [
+                KeyboardButton(text=GO_BACK_TEXT),
+            ]
+        ]
+    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
+
     # Get previous months with invoices
 
     # for month in available_months:
@@ -856,8 +863,22 @@ async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     #     result, first_day, last_day = get_sell_stats(year, month_num)
     #     message_text += format_message_text(result, first_day, last_day)
 
-    await context.bot.send_message(update.effective_chat.id, message_text)
+    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
+
+async def sell_variables(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    keys = [
+        [
+            KeyboardButton(text=GO_BACK_TEXT),
+        ]
+    ]
+
+    markup = ReplyKeyboardMarkup(keys, resize_keyboard=True)
+    message_text = sale_variables_text(
+        THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, PROFIT_AMOUNT)
+
+    await context.bot.send_message(update.effective_chat.id, message_text, reply_markup=markup)
 
 async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
