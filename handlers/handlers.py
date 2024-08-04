@@ -5,6 +5,7 @@ from telegram import (
     ReplyKeyboardMarkup,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    ReplyKeyboardRemove
 )
 from telegram.ext import ContextTypes
 from utilities.utils import (
@@ -191,6 +192,7 @@ async def buy_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=SUB_HELP_TEXT,
         reply_markup=markup,
     )
+
     set_session(user_id, "awaiting_username", "true")
     set_session(user_id, "last_message", message.message_id)
 
@@ -202,6 +204,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_state = get_user_state(user_id)
     last_message_id = get_session(user_id, "last_message")
     if user_state == BotState.BUY_PREMIUM:
+
         if get_session(user_id, "awaiting_username") == "true":
             keyboard = [
                 [
@@ -224,9 +227,11 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     set_user_state(user_id, BotState.SUBS_LIST)
 
                     # Remove the keyboard
-                    # await context.bot.delete_message(
+                    # await context.bot.edit_message_text(
                     #     chat_id=update.effective_chat.id,
                     #     message_id=int(last_message_id),
+                    #     text="sg",
+                    #     reply_markup=ReplyKeyboardRemove()
                     # )
                     await subs_list(update, context)
             else:
@@ -237,10 +242,6 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     set_user_state(user_id, BotState.SUBS_LIST)
 
                     # Remove the keyboard
-                    await context.bot.delete_message(
-                        chat_id=update.effective_chat.id,
-                        message_id=int(last_message_id),
-                    )
 
                     # Proceed to the subscription list
                     await subs_list(update, context)
@@ -262,6 +263,7 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     push_menu(user_id, buy_sub)
     user_state = get_user_state(user_id)
     username = get_session(user_id, "entered_username")
+    last_message_id = get_session(user_id, "last_message")
 
     subs_list_keys = [
 
@@ -287,7 +289,7 @@ async def subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
     ]
     markup = InlineKeyboardMarkup(subs_list_keys)
-    await context.bot.send_message(
+    msg = await context.bot.send_message(
         chat_id=update.effective_chat.id, text=choose_sub_option(username=username), reply_markup=markup
     )
 
@@ -318,7 +320,7 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 twelve_m_invoice_price))  # Store as string
             set_session(user_id, 'profit_amount', int(profit_amount))
         else:
-            await query.edit_message_text(text=INVALID_OPTION_TEXT)
+
             return
         set_user_state(user_id, BotState.INVOICE_LIST)
         # Delete the original subs_list message after state change
@@ -675,19 +677,29 @@ async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "go_back_faq":
-        keyboard = [
+        top_buttons = [
+            [
+                InlineKeyboardButton(
+                    text=CHANELL_TEXT, url=f'https://t.me/{CHANELL_ID}'),
+                InlineKeyboardButton(text=ADMIN_PANEL_TEXT, url=ADMIN_LINK)
+
+            ]
+        ]
+
+        # Create the FAQ buttons
+        faq_buttons = [
             [InlineKeyboardButton(q[0], callback_data=f"faq_{i}")]
             for i, q in enumerate(FAQ_FULL_TEXT)
         ]
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    text=ADMIN_PANEL_TEXT, url=ADMIN_LINK
-                ),
-                InlineKeyboardButton(
-                    GO_BACK_TEXT, callback_data="go_back_cancelled"),
-            ],
-        )
+
+        # Create the Go Back button
+        go_back_button = [
+            [InlineKeyboardButton(
+                GO_BACK_TEXT, callback_data="go_back_cancelled")]
+        ]
+
+        # Combine all the buttons
+        keyboard = top_buttons + faq_buttons + go_back_button
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(FAQ_TEXT, reply_markup=reply_markup)
     else:
@@ -885,6 +897,7 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_state = get_user_state(user_id)
     text = update.message.text
     photo = update.message.photo
+    last_message_id = get_session(user_id, "last_message")
 
     if user_state == BotState.START:
         if text == BUY_PREMIUM_TEXT:
@@ -904,6 +917,7 @@ async def handle_states(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await start(update, context)
     elif user_state == BotState.BUY_PREMIUM:
+
         await handle_text_message(update, context)
     elif user_state == BotState.FAQ:
         if text:
