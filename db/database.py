@@ -51,6 +51,15 @@ def create_tables():
         )"""
     )
     conn.commit()
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS stars_services (
+            service_name TEXT,
+            price REAL, 
+            fee REAL,
+            profit REAL
+        )"""
+    )
+    conn.commit()
 
     cur.close()
     conn.close()

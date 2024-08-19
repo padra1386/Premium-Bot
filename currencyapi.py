@@ -6,6 +6,11 @@ from config import (
     TWELVE_M_USD_PRICE,
     FEE_AMOUNT,
     PROFIT_AMOUNT,
+    FIFTY_STARS_PRICE,
+    SEVENTY_FIVE_STARS_PRICE,
+    HUNDRED_STARS_PRICE,
+    STARS_PROFIT,
+    STARS_FEE
 )
 import requests
 
@@ -21,11 +26,18 @@ data = response.json()
 last_price = data["result"]["symbols"]["USDTTMN"]["stats"]["lastPrice"]
 
 
-services_data = [
+premium_services_data = [
     ("three_m", float(THREE_M_USD_PRICE), float(FEE_AMOUNT), float(PROFIT_AMOUNT)),
     ("nine_m", float(NINE_M_USD_PRICE), float(FEE_AMOUNT), float(PROFIT_AMOUNT)),
     ("twelve_m", float(TWELVE_M_USD_PRICE),
      float(FEE_AMOUNT), float(PROFIT_AMOUNT)),
+]
+
+stars_services_data = [
+    ("50", float(FIFTY_STARS_PRICE), float(STARS_FEE), float(STARS_PROFIT)),
+    ("75", float(SEVENTY_FIVE_STARS_PRICE), float(STARS_FEE), float(STARS_PROFIT)),
+    ("100", float(HUNDRED_STARS_PRICE),
+     float(STARS_FEE), float(STARS_PROFIT)),
 ]
 
 
@@ -44,10 +56,35 @@ def insert_data_if_empty():
 
 
 def insert_data():
-    for service_name, price, fee, profit in services_data:
+    for service_name, price, fee, profit in premium_services_data:
         cur.execute(
             """
             INSERT INTO services (service_name, price, fee, profit) VALUES (?, ?, ?, ?)
+            """,
+            (service_name, price, fee, profit),
+        )
+        conn.commit()
+
+
+def stars_check_rows_count():
+    cur.execute("SELECT COUNT(*) FROM stars_services")
+    count = cur.fetchone()[0]
+    return count
+
+
+def stars_insert_data_if_empty():
+    count = stars_check_rows_count()
+    if count == 0:
+        stars_insert_data()
+    else:
+        print("Table 'stars_services' is not empty. Skipping insertion.")
+
+
+def stars_insert_data():
+    for service_name, price, fee, profit in stars_services_data:
+        cur.execute(
+            """
+            INSERT INTO stars_services (service_name, price, fee, profit) VALUES (?, ?, ?, ?)
             """,
             (service_name, price, fee, profit),
         )
@@ -58,6 +95,7 @@ def insert_data():
 
 # Usage:
 insert_data_if_empty()
+stars_insert_data_if_empty()
 
 
 if __name__ == "__main__":
@@ -85,5 +123,32 @@ for service in data:
         # profit_amount = round_up_to_thousands(profit * float(last_price))
     elif service_name == "twelve_m":
         twelve_m_price = round_up_to_thousands(price * float(last_price))
+        # fee_amount = round_up_to_thousands(fee * float(last_price))
+        # profit_amount = round_up_to_thousands(profit * float(last_price))
+
+
+cur.execute(
+    """SELECT service_name, price, fee, profit
+    FROM stars_services
+    WHERE service_name IN ('50', '75', '100');"""
+)
+stars_data = cur.fetchall()
+
+stars_fee_amount = round_up_to_thousands(float(STARS_FEE) * float(last_price))
+stars_profit_amount = round_up_to_thousands(
+    float(STARS_PROFIT) * float(last_price))
+# Assign values to the respective variables
+for service in stars_data:
+    service_name, price, fee, profit = service
+    if service_name == "50":
+        fifty_price = round_up_to_thousands(price * float(last_price))
+        # fee_amount = round_up_to_thousands(fee * float(last_price))
+        # profit_amount = round_up_to_thousands(profit * float(last_price))
+    elif service_name == "75":
+        seventy_five_price = round_up_to_thousands(price * float(last_price))
+        # fee_amount = round_up_to_thousands(fee * float(last_price))
+        # profit_amount = round_up_to_thousands(profit * float(last_price))
+    elif service_name == "100":
+        hundred_price = round_up_to_thousands(price * float(last_price))
         # fee_amount = round_up_to_thousands(fee * float(last_price))
         # profit_amount = round_up_to_thousands(profit * float(last_price))

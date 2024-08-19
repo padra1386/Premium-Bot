@@ -17,7 +17,7 @@ from handlers.handlers import (
     faq,
     my_subs,
     go_back,
-    subs_list,
+    premium_subs_list,
     update_status,
     handle_text_message,
     handle_sub_choice,
@@ -26,6 +26,7 @@ from handlers.handlers import (
     go_back_handle,
     handle_states,
     faq_callback,
+    handle_custom_amount
 )
 from utilities.texts import (
 
@@ -59,7 +60,7 @@ def main():
     status_handler = CallbackQueryHandler(update_status, pattern="^status:")
 
     sub_choice_handler = CallbackQueryHandler(
-        handle_sub_choice, pattern=r"^sub:\d+m")
+        handle_sub_choice, pattern=r"^sub:\w+")
 
     inline_keyboard_go_back_handler = CallbackQueryHandler(
         go_back_handle, pattern="^go_back$"
@@ -73,6 +74,9 @@ def main():
     )
     handle_states_handler = MessageHandler(
         filters.TEXT & ~filters.COMMAND, handle_states
+    )
+    handle_custom_amount_handler = MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_custom_amount
     )
     app.add_handler(TypeHandler(Update, process_update), group=-1)
 
@@ -88,6 +92,7 @@ def main():
             faq_go_back_handler,
             faq_callback_handler,
             cancelled_message_go_back,
+            # handle_custom_amount_handler
         ]
     )
 

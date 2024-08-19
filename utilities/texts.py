@@ -13,6 +13,7 @@ import datetime
 WELCOME_TEXT = "خوش آمدید"
 START_TEXT = "start"
 BUY_PREMIUM_TEXT = "🛍️ تلگرام پرمیوم"
+BUY_STARS_TEXT = "⭐ خرید استارز"
 BUY_FOR_SELF_TEXT = "🙋‍♂️ خرید برای خودم"
 BUY_FOR_FRIENDS_TEXT = "🙋‍♂️🙋‍♂️🙋‍♂️ خرید برای دوستان"
 BUY_SUCCESS_TEXT = "✅ خرید با موفقیت انجام شد"
@@ -38,6 +39,9 @@ GO_BACK_TEXT = "🔙 بازگشت"
 THREE_M_CHOICE = "تلگرام پرمیوم 3 ماهه"
 SIX_M_CHOICE = "تلگرام پرمیوم 6 ماهه"
 TWELVE_M_CHOICE = "تلگرام پرمیوم 12 ماهه"
+FIFTY_STARS_CHOICE = "50 استارز"
+SEVENTY_FIVE_STARS_CHOICE = "75 استارز"
+HUNDRED_STARS_CHOICE = "100 استارز"
 PENDING_APPROVAL_TEXT = "🕰 در انتظار تایید"
 REVIEWING_TEXT = "⌛ در حال بررسی"
 APPROVED_TEXT = "✅ درخواست انجام شده"
@@ -50,10 +54,19 @@ SUB_HELP_TEXT = f"""
 💡 نمونه ایدی تلگرام : @{ADMIN_USERNAME}
 """
 
+STARS_HELP_TEXT = f"""
+اگر میخواهید برای تلگرام خود استارز بخرید از طریق دکمه منو اکانت را برای ربات به اشتراک بگذارید یا میتوانید آیدی اکانت دیگری را ارسال کنید
+
+💡 نمونه ایدی تلگرام : @{ADMIN_USERNAME}
+"""
+
 INVALID_OPTION_TEXT = "❗️ گزینه نامعتبر لطفا دوباره تلاش کنید."
 FAILED_UPDATE_STATUS_TEXT = "❗️ وضعیت به‌روزرسانی نشد."
 ERROR_SENDING_PHOTO = "❗️ هنگام ارسال عکس برای ادمین خطایی رخ داد."
 UNKNOWN_TEXT = "نامشخص"
+CUSTOM_AMOUNT = "✍️ وارد کردن مقدار مشخص"
+ENTER_CUSTOM_AMOUNT = """⭐ لطفا مقدار استارز مورد نظر را برای خرید برای بات ارسال کنید (از 50 تا 1,000,000)
+"""
 NO_SUB_TEXT = "🚫 سفارشی ثبت نشده است"
 # USERNAME_LIMITS_TEXT = "⚠️ لطفا یوزر نیم را به درستی وارد کنید. یک یوزر نیم درست شامل : حروف انگلیسی A تا Z ، اعداد 0 تا 9 ، آندرسکور( _ )، و ۵ تا ۳۲ حرف است"
 STATUS_UPDATED_TEXT = "وضعیت تغییر کرد به : "
@@ -183,7 +196,6 @@ def format_message_text(result, first_day, last_day, is_current=False):
 
     now_month = jdatetime.datetime.now().month
 
-
     # Create a list for Persian month names
     persian_month_names = [
         'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
@@ -277,7 +289,7 @@ def user_invoice_text(invoice_title, formatted_price, invoice_username):
     return text
 
 
-def choose_sub_option(username):
+def choose_premium_sub_option(username):
     CHOOSE_OPTION_TEXT = f"""
 ⭐️ لطفا نوع اشتراک تلگرام پریموم خود را انتخاب کنید
 
@@ -300,3 +312,13 @@ def six_m_text(price):
 def twelve_m_text(price):
     text = f"12 ماهه - {format_with_commas(price)} ت"
     return text
+
+
+def choose_stars_sub_option(username):
+    CHOOSE_OPTION_TEXT = f"""
+⭐️ لطفا تعداد استارز مورد نظر خود را انتخاب کنید
+
+آیدی تلگرام انتخاب شده: @{username}
+"""
+
+    return CHOOSE_OPTION_TEXT
