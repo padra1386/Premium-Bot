@@ -838,7 +838,7 @@ async def user_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def sell_stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_text = ""
+    message_text = "خالی"
 
     available_months = get_available_months()
 
