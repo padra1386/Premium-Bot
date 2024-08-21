@@ -38,7 +38,7 @@ from currencyapi import (
     fifty_price,
     seventy_five_price,
     hundred_price,
-    stars_fee_amount,
+    # stars_fee_amount,
     stars_profit_amount
 )
 from utilities.texts import (
@@ -798,7 +798,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     cur.execute(
                         "INSERT INTO invoice (id, username, sub, created, status, invoice_id, price, profit, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (user_id, user_username, user_sub, get_solar_date(), default_sub_status,
-                         invoice_id, str(sub_price), str(sub_profit), str(stars_fee_amount))
+                         invoice_id, str(sub_price), str(sub_profit), str(0))
                     )
                     conn.commit()
                 else:
