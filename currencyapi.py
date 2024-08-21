@@ -6,9 +6,9 @@ from config import (
     TWELVE_M_USD_PRICE,
     FEE_AMOUNT,
     PROFIT_AMOUNT,
-    FIFTY_STARS_PRICE,
-    SEVENTY_FIVE_STARS_PRICE,
-    HUNDRED_STARS_PRICE,
+    # FIFTY_STARS_PRICE,
+    # SEVENTY_FIVE_STARS_PRICE,
+    # HUNDRED_STARS_PRICE,
     STARS_PROFIT,
     STARS_FEE
 )
@@ -34,9 +34,9 @@ premium_services_data = [
 ]
 
 stars_services_data = [
-    ("50", float(FIFTY_STARS_PRICE), float(0), float(0)),
-    ("75", float(SEVENTY_FIVE_STARS_PRICE), float(0), float(0)),
-    ("100", float(HUNDRED_STARS_PRICE),
+    ("50", float(55), float(0), float(0)),
+    ("75", float(55), float(0), float(0)),
+    ("100", float(55),
      float(0), float(0)),
 ]
 
