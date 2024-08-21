@@ -6,7 +6,7 @@ from currencyapi import (
     twelve_m_price,
     last_price
 )
-from utilities.utils import format_solar_date, format_with_commas, get_solar_date
+from utilities.utils import format_solar_date, format_with_commas, get_solar_date, round_up_to_thousands
 from config import ADMIN_USERNAME, CHANELL_ID, WEBSITE_ADDRESS, CREDIT_CARD_NUMBER, CREDIT_CARD_OWNER
 import datetime
 
@@ -246,10 +246,10 @@ def invoice_text(invoice_details, first_name, last_name, user_id, user_username,
 🔗 ایدی تلگرام اصلی : @{user_username}
 🔍 ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
 
-💲 قیمت تتر : {format_with_commas(int(float(last_price)))}
-💰 قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
-💸 کارمزد فاکتور : {format_with_commas(int(fee_amount))}
-📈 سود فاکتور : {format_with_commas(int(profit_amount))}
+💲 قیمت تتر : {format_with_commas(float(last_price))}
+💰 قیمت فاکتور : {round_up_to_thousands(float(invoice_details.get('price', 'N/A')))} ت
+💸 کارمزد فاکتور : {format_with_commas(float(fee_amount))}
+📈 سود فاکتور : {format_with_commas(float(profit_amount))}
 
 """
 
@@ -263,10 +263,10 @@ def invoice_text(invoice_details, first_name, last_name, user_id, user_username,
 \u200F🔗 ایدی تلگرام اصلی : @{user_username}
 \u200F🔍 ایدی تلگرام وارد شده : {invoice_details.get('description', 'N/A')}
 
-\u200F💲 قیمت تتر : {format_with_commas(int(float(last_price)))}
+\u200F💲 قیمت تتر : {format_with_commas(float(float(last_price)))}
 \u200F💰 قیمت فاکتور : {invoice_details.get('price', 'N/A')} ت
-\u200F💸 کارمزد فاکتور : {format_with_commas(int(fee_amount))}
-\u200F📈 سود فاکتور : {format_with_commas(int(profit_amount))}
+\u200F💸 کارمزد فاکتور : {format_with_commas(float(fee_amount))}
+\u200F📈 سود فاکتور : {format_with_commas(float(profit_amount))}
 
 """
     return rtl_text
@@ -322,3 +322,18 @@ def choose_stars_sub_option(username):
 """
 
     return CHOOSE_OPTION_TEXT
+
+
+def fifty_stars_text(price):
+    text = f"50 استارز - {format_with_commas(price)} ت"
+    return text
+
+
+def seventy_five_stars_text(price):
+    text = f"75 استارز - {format_with_commas(price)} ت"
+    return text
+
+
+def hundred_stars_text(price):
+    text = f"100 استارز - {format_with_commas(price)} ت"
+    return text

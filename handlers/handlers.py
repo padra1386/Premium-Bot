@@ -7,6 +7,7 @@ from telegram import (
     InlineKeyboardMarkup,
     ReplyKeyboardRemove
 )
+import re
 from telegram.ext import ContextTypes
 from utilities.utils import (
     push_menu,
@@ -88,6 +89,9 @@ from utilities.texts import (
     six_m_text,
     twelve_m_text,
     format_message_text,
+    fifty_stars_text,
+    seventy_five_stars_text,
+    hundred_stars_text,
     USERS_STATS,
     SELL_STATS,
     PHOTO_SENT_SUCCESSFULLY,
@@ -100,7 +104,7 @@ from utilities.texts import (
     ABOUT_US_TEXT,
     CHANELL_TEXT
 )
-from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, ADMIN_USERNAME, CHANELL_ID
+from config import ADMIN_CHAT_ID, PROFIT_AMOUNT, THREE_M_USD_PRICE, NINE_M_USD_PRICE, TWELVE_M_USD_PRICE, FEE_AMOUNT, ADMIN_USERNAME, CHANELL_ID, STARS_PROFIT
 import uuid
 from db.dbconn import conn, cur
 from redis_conn.redis_connection import redis_conn
@@ -110,19 +114,19 @@ from datetime import datetime
 import jdatetime
 
 
-three_m_invoice_price = int(three_m_price) + \
-    int(profit_amount) + int(fee_amount)
-six_m_invoice_price = int(six_m_price) + \
-    int(profit_amount) + int(fee_amount)
-twelve_m_invoice_price = int(twelve_m_price) + \
-    int(profit_amount) + int(fee_amount)
+three_m_invoice_price = float(three_m_price) + \
+    float(profit_amount) + float(fee_amount)
+six_m_invoice_price = float(six_m_price) + \
+    float(profit_amount) + float(fee_amount)
+twelve_m_invoice_price = float(twelve_m_price) + \
+    float(profit_amount) + float(fee_amount)
 
-fifty_stars_invoice_price = int(fifty_price) + \
-    int(stars_profit_amount) + int(stars_fee_amount)
-seventy_five_stars_invoice_price = int(seventy_five_price) + \
-    int(stars_profit_amount) + int(stars_fee_amount)
-hundred_stars_invoice_price = int(hundred_price) + \
-    int(stars_profit_amount) + int(stars_fee_amount)
+fifty_stars_invoice_price = (50 * 0.015) * \
+    (float(last_price) + float(STARS_PROFIT))
+seventy_five_stars_invoice_price = (
+    75 * 0.015) * (float(last_price) + float(STARS_PROFIT))
+hundred_stars_invoice_price = (100 * 0.015) * \
+    (float(last_price) + float(STARS_PROFIT))
 
 
 def push_menu(user_id: str, menu_function):
@@ -259,7 +263,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     # Remove the keyboard
                     # await context.bot.edit_message_text(
                     #     chat_id=update.effective_chat.id,
-                    #     message_id=int(last_message_id),
+                    #     message_id=float(last_message_id),
                     #     text="sg",
                     #     reply_markup=ReplyKeyboardRemove()
                     # )
@@ -309,7 +313,7 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                     # Remove the keyboard
                     # await context.bot.edit_message_text(
                     #     chat_id=update.effective_chat.id,
-                    #     message_id=int(last_message_id),
+                    #     message_id=float(last_message_id),
                     #     text="sg",
                     #     reply_markup=ReplyKeyboardRemove()
                     # )
@@ -385,16 +389,16 @@ async def stars_subs_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     stars_subs_list_keys = [
         [
             InlineKeyboardButton(
-                text=fifty_stars_invoice_price, callback_data="sub:50"),
+                text=fifty_stars_text(round_up_to_thousands(fifty_stars_invoice_price)), callback_data="sub:50"),
         ],
         [
             InlineKeyboardButton(
-                text=seventy_five_stars_invoice_price, callback_data="sub:75"
+                text=seventy_five_stars_text(round_up_to_thousands(seventy_five_stars_invoice_price)), callback_data="sub:75"
             ),
         ],
         [
             InlineKeyboardButton(
-                text=hundred_stars_invoice_price, callback_data="sub:100"
+                text=hundred_stars_text(round_up_to_thousands(hundred_stars_invoice_price)), callback_data="sub:100"
             ),
         ],
     ]
@@ -437,19 +441,19 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         THREE_M_CHOICE)
             set_session(user_id, "sub_price", str(
                 three_m_invoice_price))  # Store as string
-            set_session(user_id, 'profit_amount', int(profit_amount))
+            set_session(user_id, 'profit_amount', float(profit_amount))
         elif data == "sub:6m":
             set_session(user_id, "sub_choice", SIX_M_CHOICE)
             set_session(user_id, "sub_price", str(
                 six_m_invoice_price))  # Store as string
-            set_session(user_id, 'profit_amount', int(profit_amount))
+            set_session(user_id, 'profit_amount', float(profit_amount))
 
         elif data == "sub:12m":
             set_session(user_id, "sub_choice",
                         TWELVE_M_CHOICE)
             set_session(user_id, "sub_price", str(
                 twelve_m_invoice_price))  # Store as string
-            set_session(user_id, 'profit_amount', int(profit_amount))
+            set_session(user_id, 'profit_amount', float(profit_amount))
         else:
 
             return
@@ -467,32 +471,37 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=ENTER_CUSTOM_AMOUNT
             )
             set_user_state(user_id, BotState.CUSTOM_AMOUNT)
-        elif data == "sub:50":
-            set_session(user_id, "sub_choice",
-                        FIFTY_STARS_CHOICE)
-            set_session(user_id, "sub_price", str(
-                fifty_stars_invoice_price))  # Store as string
-            set_session(user_id, 'profit_amount', int(profit_amount))
-        elif data == "sub:75":
-            set_session(user_id, "sub_choice",
-                        SEVENTY_FIVE_STARS_CHOICE)
-            set_session(user_id, "sub_price", str(
-                seventy_five_stars_invoice_price))  # Store as string
-            set_session(user_id, 'profit_amount', int(profit_amount))
-        elif data == "sub:100":
-            set_session(user_id, "sub_choice",
-                        HUNDRED_STARS_CHOICE)
-            set_session(user_id, "sub_price", str(
-                hundred_stars_invoice_price))  # Store as string
-            set_session(user_id, 'profit_amount', int(profit_amount))
         else:
-            return
+            if data == "sub:50":
+                set_session(user_id, "sub_choice",
+                            FIFTY_STARS_CHOICE)
+                set_session(user_id, "sub_price", str(
+                    round_up_to_thousands(fifty_stars_invoice_price)))  # Store as string
+                set_session(user_id, 'profit_amount',
+                            (50 * 0.015) * float(STARS_PROFIT))
+            elif data == "sub:75":
+                set_session(user_id, "sub_choice",
+                            SEVENTY_FIVE_STARS_CHOICE)
+                set_session(user_id, "sub_price", str(
+                    round_up_to_thousands(seventy_five_stars_invoice_price)))  # Store as string
+                set_session(user_id, 'profit_amount',
+                            (75 * 0.015) * float(STARS_PROFIT))
+            elif data == "sub:100":
+                set_session(user_id, "sub_choice",
+                            HUNDRED_STARS_CHOICE)
+                set_session(user_id, "sub_price", str(
+                    round_up_to_thousands(hundred_stars_invoice_price)))  # Store as string
+                set_session(user_id, 'profit_amount',
+                            (100 * 0.015) * float(STARS_PROFIT))
             set_user_state(user_id, BotState.INVOICE_LIST)
-            # Delete the original premium_subs_list message after state change
+        # Delete the original premium_subs_list message after state change
             await context.bot.delete_message(
                 chat_id=update.effective_chat.id, message_id=query.message.message_id
             )
             await buy_for_self(update, context)
+        # else:
+        #     return
+
     else:
         await start(update, context)
 
@@ -502,7 +511,7 @@ async def handle_custom_amount(update: Update, context: ContextTypes.DEFAULT_TYP
     custom_amount = update.message.text
     print(custom_amount)
     usd_price = float(custom_amount)*0.015
-    irr_price = int(usd_price * (float(last_price) + 2000))
+    irr_price = float(usd_price * (float(last_price) + 2000))
 
     # Validate the custom amount (e.g., check if it's a number, within a certain range)
     if get_user_state(user_id) == BotState.CUSTOM_AMOUNT:
@@ -516,7 +525,7 @@ async def handle_custom_amount(update: Update, context: ContextTypes.DEFAULT_TYP
     # Store the custom amount in the user's session
     set_session(user_id, "sub_choice", f"{custom_amount} تا استارز")
     set_session(user_id, "sub_price", round_up_to_thousands(irr_price))
-    set_session(user_id, 'profit_amount', int(profit_amount))
+    set_session(user_id, 'profit_amount', float(profit_amount))
 
     # Proceed to the next step (e.g., generating an invoice)
     set_user_state(user_id, BotState.INVOICE_LIST)
@@ -561,16 +570,22 @@ async def buy_for_self(update: Update, context: ContextTypes.DEFAULT_TYPE):
             delete_session(user_id, "entered_username")
 
         invoice_username = f"@{username}"
-
+        profit = float(STARS_PROFIT)
         # Process the invoice creation
         if "استارز" in invoice_title:
+            match = re.search(r'\d+', invoice_title)
+            if match:
+                amount = float(match.group())
+            usd_price = float(amount)*0.015
+            irr_price = float(
+                usd_price * (float(last_price) + profit))
 
             invoice_details = {
                 "title": invoice_title,
                 "description": invoice_username,
-                "price": invoice_price,
-                "profit": stars_profit_amount,
-                'fee': stars_fee_amount
+                "price": irr_price,
+                "profit": float(usd_price * profit),
+                'fee': 0
             }
         else:
             invoice_details = {
@@ -774,6 +789,8 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_username = user_data.username
             user_sub = invoice_details.get("title", "N/A")
             sub_price = invoice_details.get("price", "N/A")
+            sub_profit = invoice_details.get("profit", "N/A")
+
             default_sub_status = "Reviewing"
 
             if user_username:
@@ -781,7 +798,7 @@ async def buy_success(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     cur.execute(
                         "INSERT INTO invoice (id, username, sub, created, status, invoice_id, price, profit, fee) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (user_id, user_username, user_sub, get_solar_date(), default_sub_status,
-                         invoice_id, str(sub_price), str(stars_profit_amount), str(stars_fee_amount))
+                         invoice_id, str(sub_price), str(sub_profit), str(stars_fee_amount))
                     )
                     conn.commit()
                 else:
@@ -920,7 +937,7 @@ async def faq_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(FAQ_TEXT, reply_markup=reply_markup)
     else:
-        index = int(query.data.split("_")[1])
+        index = float(query.data.split("_")[1])
         question, answer = FAQ_FULL_TEXT[index]
         keyboard = [[InlineKeyboardButton(
             GO_BACK_TEXT, callback_data="go_back_faq")]]

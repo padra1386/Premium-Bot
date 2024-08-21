@@ -34,10 +34,10 @@ premium_services_data = [
 ]
 
 stars_services_data = [
-    ("50", float(FIFTY_STARS_PRICE), float(STARS_FEE), float(STARS_PROFIT)),
-    ("75", float(SEVENTY_FIVE_STARS_PRICE), float(STARS_FEE), float(STARS_PROFIT)),
+    ("50", float(FIFTY_STARS_PRICE), float(0), float(0)),
+    ("75", float(SEVENTY_FIVE_STARS_PRICE), float(0), float(0)),
     ("100", float(HUNDRED_STARS_PRICE),
-     float(STARS_FEE), float(STARS_PROFIT)),
+     float(0), float(0)),
 ]
 
 
@@ -108,8 +108,8 @@ cur.execute(
 )
 data = cur.fetchall()
 
-fee_amount = round_up_to_thousands(int(FEE_AMOUNT) * float(last_price))
-profit_amount = round_up_to_thousands(int(PROFIT_AMOUNT) * float(last_price))
+fee_amount = round_up_to_thousands(float(FEE_AMOUNT) * float(last_price))
+profit_amount = round_up_to_thousands(float(PROFIT_AMOUNT) * float(last_price))
 # Assign values to the respective variables
 for service in data:
     service_name, price, fee, profit = service
