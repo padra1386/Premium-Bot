@@ -135,8 +135,8 @@ cur.execute(
 stars_data = cur.fetchall()
 
 # stars_fee_amount = round_up_to_thousands(float(STARS_FEE) * float(last_price))
-stars_profit_amount = round_up_to_thousands(
-    float(STARS_PROFIT) * float(last_price))
+# stars_profit_amount = round_up_to_thousands(
+#     float(STARS_PROFIT) * float(last_price))
 # Assign values to the respective variables
 for service in stars_data:
     service_name, price, fee, profit = service

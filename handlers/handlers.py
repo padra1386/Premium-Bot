@@ -39,7 +39,7 @@ from currencyapi import (
     seventy_five_price,
     hundred_price,
     # stars_fee_amount,
-    stars_profit_amount
+    # stars_profit_amount
 )
 from utilities.texts import (
     BUY_PREMIUM_TEXT,
