@@ -10,6 +10,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import calendar
 import jdatetime
 
+
 def push_menu(context, menu_function):
     if "menu_stack" not in context.user_data:
         context.user_data["menu_stack"] = []
@@ -146,7 +147,6 @@ def get_available_months():
 
     months = [row[0] for row in results]
 
-
     return months
 
 
@@ -160,15 +160,12 @@ def get_sell_stats(year, month):
     # first_day_dt = datetime(first_day[0], first_day[1], first_day[2])
     # last_day_dt = datetime(last_day[0], last_day[1], last_day[2])
 
-
     # first_day_dt = datetime(first_day[0], first_day[1], first_day[2])
     # last_day_dt = datetime(last_day[0], last_day[1], last_day[2])
 
     # Formatting the datetime objects as strings
     first_day_str = first_day.strftime('%Y-%m-%d 00:00:00')
     last_day_str = last_day.strftime('%Y-%m-%d 23:59:59')
-
-
 
     main_query = '''
     SELECT 
@@ -196,8 +193,6 @@ def format_solar_date(date_str):
     return f"{year}-{month}-{day}"
 
 
-
-
 def generate_inline_keyboard():
     available_months = get_available_months()
     keyboard = []
@@ -221,3 +216,24 @@ def generate_inline_keyboard():
 def get_solar_date():
     now = jdatetime.datetime.now()
     return now.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def extract_number(text):
+    """Extracts the first integer from a given text string.
+
+    Args:
+      text: The input text string.
+
+    Returns:
+      The extracted integer, or None if no integer is found.
+    """
+
+    import re
+
+    # Use regular expression to find the first integer in the text
+    match = re.search(r'\d+', text)
+
+    if match:
+        return int(match.group())
+    else:
+        return None

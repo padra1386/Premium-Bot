@@ -25,7 +25,8 @@ from utilities.utils import (
     round_up_to_thousands,
     generate_inline_keyboard,
     get_available_months,
-    get_solar_date
+    get_solar_date,
+    extract_number
 )
 from currencyapi import (
     three_m_price,
@@ -508,7 +509,7 @@ async def handle_sub_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_custom_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
-    custom_amount = update.message.text
+    custom_amount = extract_number(update.message.text)
     print(custom_amount)
     usd_price = float(custom_amount)*0.015
     irr_price = float(usd_price * (float(last_price) + 2000))
@@ -518,7 +519,7 @@ async def handle_custom_amount(update: Update, context: ContextTypes.DEFAULT_TYP
         if not is_valid_amount(custom_amount):
             await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text="Invalid amount. Please enter a valid number."
+                text="⚠️ مقدار وارد شده غلط است لطفا یک عدد معتبر وارد کنید"
             )
             return
 
@@ -534,10 +535,9 @@ async def handle_custom_amount(update: Update, context: ContextTypes.DEFAULT_TYP
 
 def is_valid_amount(amount):
     # Implement your validation logic here
-    try:
-        amount = float(amount)
-        return amount > 0
-    except ValueError:
+    if 50 <= amount <= 1000000:
+        return True
+    else:
         return False
 
 
