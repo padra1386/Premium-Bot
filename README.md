@@ -51,5 +51,3 @@ docker-compose up
 
 If you encounter any issues during installation or setup, refer to the troubleshooting section in the documentation or raise an issue on the [GitHub repository](https://github.com/padra1386/Premium-Bot/issues).
 ```
-
-Feel free to replace placeholder text like `your-username`, `my_password`, `your-database-name`, etc., with the actual values specific to your setup.
